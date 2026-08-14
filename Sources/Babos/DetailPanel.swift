@@ -8,7 +8,10 @@ struct DetailPanel: View {
     @FocusState private var logFocused: Bool
 
     var body: some View {
-        if let c = store.current {
+        // 案件がゼロなら選びようがないので、常にフォームを出す
+        if store.mode == .new || store.cases.isEmpty {
+            NewCaseForm(store: store)
+        } else if let c = store.current {
             VStack(alignment: .leading, spacing: 0) {
                 header(c)
                 Divider().overlay(Color.hairline)
@@ -21,14 +24,6 @@ struct DetailPanel: View {
                 footer(c)
             }
             .padding(24)
-        } else {
-            VStack {
-                Spacer()
-                Text("案件がまだありません。")
-                    .metaStyle(12)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
         }
     }
 
@@ -36,10 +31,26 @@ struct DetailPanel: View {
 
     private func header(_ c: Case) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(c.name)
-                .font(.system(size: 26, weight: .light))
-                .foregroundStyle(.white)
-                .lineLimit(2)
+            HStack(alignment: .top) {
+                Text(c.name)
+                    .font(.system(size: 26, weight: .light))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+
+                Spacer()
+
+                // 新規フォームへ。HTML 版と同じく × ひとつ
+                Button {
+                    store.mode = .new
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.mist)
+                        .frame(width: 26, height: 26)
+                        .overlay(Circle().strokeBorder(Color.slateBody, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+            }
 
             HStack(spacing: 8) {
                 sub(c.type.isEmpty ? "＋ タイプ" : c.type)
@@ -120,9 +131,12 @@ struct DetailPanel: View {
                     } else {
                         ForEach(c.logs.sorted { $0.ts > $1.ts }) { l in
                             HStack(alignment: .top, spacing: 12) {
+                                // fixedSize が無いと「08/14」と「18:53」が
+                                // 泣き別れになる
                                 Text(l.ts.formatted(.dateTime.month(.twoDigits).day(.twoDigits).hour().minute()))
                                     .metaStyle(10)
-                                    .frame(width: 76, alignment: .leading)
+                                    .fixedSize()
+                                    .frame(width: 92, alignment: .leading)
                                 Text(l.text)
                                     .font(.system(size: 12.5))
                                     .foregroundStyle(.white.opacity(0.88))
@@ -143,21 +157,29 @@ struct DetailPanel: View {
             }
             .frame(minHeight: 90, maxHeight: 200)
 
-            TextField("ログを追加…　Enter で確定", text: $logDraft)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12.5))
-                .foregroundStyle(.white)
-                .focused($logFocused)
-                .onSubmit {
-                    store.addLog(c.id, logDraft)
-                    logDraft = ""
-                    logFocused = true          // 連続で書けるようにフォーカスを戻す
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 11)
-                .background(
-                    Capsule().strokeBorder(Color.slateBody, lineWidth: 1)
-                )
+            // ヒントは placeholder に混ぜず右端に置く。混ぜるとボタンに見える
+            HStack(spacing: 12) {
+                TextField("ログを追加…", text: $logDraft)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(.white)
+                    .focused($logFocused)
+                    .onSubmit {
+                        store.addLog(c.id, logDraft)
+                        logDraft = ""
+                        logFocused = true      // 連続で書けるようにフォーカスを戻す
+                    }
+
+                Text("Enter で確定")
+                    .metaStyle(9)
+                    .fixedSize()
+                    .opacity(logDraft.isEmpty ? 0.45 : 1)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+            .background(
+                Capsule().strokeBorder(Color.slateBody, lineWidth: 1)
+            )
         }
         .padding(.vertical, 18)
     }
@@ -222,5 +244,99 @@ struct DetailPanel: View {
             .buttonStyle(.plain)
         }
         .padding(.top, 12)
+    }
+}
+
+// MARK: - 新規案件フォーム
+
+/// **別ウィンドウにしない。** 詳細カードと同じ場所に出す。
+/// 作った案件がそのまま左に気泡として現れる、という繋がりが見えなくなるため。
+struct NewCaseForm: View {
+    @Bindable var store: Store
+
+    @State private var name = ""
+    @State private var type = ""
+    @State private var client = ""
+    @FocusState private var nameFocused: Bool
+
+    private var canGoBack: Bool { !store.cases.isEmpty }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("新規案件")
+                        .font(.system(size: 26, weight: .light))
+                        .foregroundStyle(.white)
+                    Text(canGoBack
+                         ? "作成すると、この案件が左側に気泡として現れます。"
+                         : "まずは1件目を登録してください。")
+                        .metaStyle()
+                }
+
+                Spacer()
+
+                if canGoBack {
+                    Button {
+                        store.mode = .detail
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.mist)
+                            .frame(width: 26, height: 26)
+                            .overlay(Circle().strokeBorder(Color.slateBody, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.bottom, 26)
+
+            field("案件名", "例：A社 LP", $name).focused($nameFocused)
+            field("案件タイプ", "例：LinkedIn ／ 印刷物 ／ バナー", $type)
+            field("クライアント", "例：A社 ／ 社内", $client)
+
+            HStack {
+                Text("Enter で作成").metaStyle(10)
+                Spacer()
+                Button(action: submit) {
+                    Text("作成")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 9)
+                        .background(Capsule().fill(Color.signalBlue))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 8)
+
+            Spacer(minLength: 0)
+        }
+        .padding(24)
+        .onAppear { nameFocused = true }
+    }
+
+    private func field(_ label: String, _ ph: String, _ text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(label).metaStyle(10)
+            TextField(ph, text: text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Capsule().strokeBorder(Color.slateBody, lineWidth: 1))
+                .onSubmit(submit)
+        }
+        .padding(.bottom, 18)
+    }
+
+    private func submit() {
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else {
+            nameFocused = true
+            return
+        }
+        store.create(name: name, type: type, client: client)
+        name = ""; type = ""; client = ""
     }
 }

@@ -2,10 +2,20 @@ import SwiftUI
 import Observation
 
 /// 全部狀態集中在這裡。畫面只讀它、只透過它的方法改。
+///
+/// `@MainActor` は必須。完了アニメーションの待機に Task を使うため、
+/// これが無いと Swift 6 の並行性チェックが data race として弾く。
+/// UI の状態はそもそも主スレッドに置くべきもの。
+@MainActor
 @Observable
 final class Store {
     var cases: [Case] = []
     var selectedID: String?
+
+    /// 右上のカードが何を出しているか。**新規案件は別ウィンドウにしない**——
+    /// 詳細カードの位置にそのままフォームを出す（HTML 版と同じ）。
+    enum Mode { case detail, new }
+    var mode: Mode = .detail
 
     // 篩選。三個條件同時作用於氣泡區與列表——
     // 兩邊永遠是同一批資料的兩種呈現，這是本家定下的規則
@@ -101,10 +111,40 @@ final class Store {
         cases[i].updated = .now
     }
 
+    /// 完成確認待ち。10 に到達したら即完了にはせず、必ず一度訊く
+    var pendingFinish: Case?
+    /// 完了アニメーション中。物理は位置を凍結し、画面のキーフレームに任せる
+    var finishing: Set<String> = []
+
     func setStep(_ id: String, _ n: Int) {
+        guard let c = cases.first(where: { $0.id == id }) else { return }
+        let next = (c.step == n) ? n - 1 : n
+
+        // **10 に届いたら完了フロー。** ここがこの app で唯一の儀式的な瞬間
+        if next >= 10 {
+            pendingFinish = c
+            return
+        }
         mutate(id) { c in
-            // 再點一次目前的節點就退回上一格
-            c.step = (c.step == n) ? n - 1 : n
+            c.step = max(0, next)
+            c.done = false
+        }
+    }
+
+    /// 確認後：気泡を膨らませて上へ抜けさせ、抜け終わってから完了にする。
+    /// 2 秒は BubbleField のキーフレーム（2.1 秒）とほぼ同じ長さ。
+    func confirmFinish() {
+        guard let target = pendingFinish else { return }
+        pendingFinish = nil
+        mutate(target.id) { $0.step = 10 }
+        finishing.insert(target.id)
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            if let i = cases.firstIndex(where: { $0.id == target.id }) {
+                cases[i].done = true
+            }
+            finishing.remove(target.id)
         }
     }
 
@@ -150,6 +190,7 @@ final class Store {
         let c = Case(name: name, type: type, client: client)
         cases.append(c)
         selectedID = c.id
+        mode = .detail
         return c
     }
 }

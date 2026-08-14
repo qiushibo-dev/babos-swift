@@ -88,7 +88,10 @@ struct Sidebar: View {
 struct CaseList: View {
     @Bindable var store: Store
 
-    private let cols: [CGFloat] = [.infinity, 92, 108, 118, 104, 64]
+    /// 欄位規格。**表頭與內容共用同一份**，分開寫就一定會對不齊。
+    /// 名稱欄靠左撐滿，其餘一律置中——`tracking` 會在最後一個字後面留白，
+    /// 靠右對齊時那段空白會把表頭推開，跟內容差幾個 px。
+    private let cols: [CGFloat] = [92, 108, 118, 104, 64]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -114,11 +117,11 @@ struct CaseList: View {
     private var header: some View {
         HStack(spacing: 14) {
             sortButton(.name).frame(maxWidth: .infinity, alignment: .leading)
-            Text("詳細").metaStyle(10).frame(width: cols[1], alignment: .center)
-            sortButton(.step).frame(width: cols[2], alignment: .center)
-            sortButton(.status).frame(width: cols[3], alignment: .center)
-            sortButton(.updated).frame(width: cols[4], alignment: .trailing)
-            sortButton(.links).frame(width: cols[5], alignment: .trailing)
+            Text("詳細").metaStyle(10).frame(width: cols[0])
+            sortButton(.step).frame(width: cols[1])
+            sortButton(.status).frame(width: cols[2])
+            sortButton(.updated).frame(width: cols[3])
+            sortButton(.links).frame(width: cols[4])
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
@@ -172,7 +175,7 @@ struct CaseList: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 3)
                 .overlay(Capsule().strokeBorder(Color.slateBody, lineWidth: 1))
-                .frame(width: cols[1])
+                .frame(width: cols[0])
 
             HStack(spacing: 6) {
                 Circle()
@@ -182,7 +185,7 @@ struct CaseList: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(Color.mist)
             }
-            .frame(width: cols[2])
+            .frame(width: cols[1])
 
             Button {
                 store.toggleWaiting(c.id)
@@ -196,17 +199,17 @@ struct CaseList: View {
                         c.status == .near ? Color.arcCyan : Color.slateBody, lineWidth: 1))
             }
             .buttonStyle(.plain)
-            .frame(width: cols[3])
+            .frame(width: cols[2])
 
             Text(c.updated.formatted(.dateTime.month(.twoDigits).day(.twoDigits)))
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(Color.fog)
-                .frame(width: cols[4], alignment: .trailing)
+                .frame(width: cols[3])
 
             Text("\(c.links.count)")
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(Color.fog)
-                .frame(width: cols[5], alignment: .trailing)
+                .frame(width: cols[4])
         }
         .padding(.horizontal, 20)
         .frame(height: 50)

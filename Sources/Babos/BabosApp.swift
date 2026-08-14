@@ -17,16 +17,15 @@ struct BabosApp: App {
 
 struct ContentView: View {
     @Bindable var store: Store
-    @State private var newCaseSheet = false
 
     var body: some View {
         VStack(spacing: 0) {
-            TopBar(store: store, newCaseSheet: $newCaseSheet)
+            TopBar(store: store)
             Divider().overlay(Color.hairline)
 
             // 上半：気泡区（可変）｜詳細（固定幅）
             HStack(spacing: 0) {
-                BubbleField(cases: store.bubbleCases, selectedID: $store.selectedID)
+                BubbleField(store: store)
                     .frame(maxWidth: .infinity)
 
                 Divider().overlay(Color.hairline)
@@ -51,8 +50,14 @@ struct ContentView: View {
             .frame(maxHeight: .infinity)
         }
         .background(Color.midnightInk)
-        .sheet(isPresented: $newCaseSheet) {
-            NewCaseSheet(store: store, presented: $newCaseSheet)
+        // 10 に到達しても即完了にはしない。必ず一度訊く
+        .alert("この案件を完了にしますか？",
+               isPresented: .init(get: { store.pendingFinish != nil },
+                                  set: { if !$0 { store.pendingFinish = nil } })) {
+            Button("キャンセル", role: .cancel) { store.pendingFinish = nil }
+            Button("完了にする") { store.confirmFinish() }
+        } message: {
+            Text(store.pendingFinish?.name ?? "")
         }
     }
 }
@@ -61,7 +66,6 @@ struct ContentView: View {
 
 struct TopBar: View {
     @Bindable var store: Store
-    @Binding var newCaseSheet: Bool
 
     var body: some View {
         HStack(spacing: 16) {
@@ -81,7 +85,7 @@ struct TopBar: View {
             Spacer()
 
             Button {
-                newCaseSheet = true
+                store.mode = .new
             } label: {
                 Text("＋ 新規案件")
                     .font(.system(size: 13))
@@ -94,73 +98,6 @@ struct TopBar: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
-    }
-}
-
-// MARK: - 新規案件
-
-struct NewCaseSheet: View {
-    @Bindable var store: Store
-    @Binding var presented: Bool
-
-    @State private var name = ""
-    @State private var type = ""
-    @State private var client = ""
-    @FocusState private var nameFocused: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("新規案件")
-                .font(.system(size: 20, weight: .light))
-                .foregroundStyle(.white)
-
-            field("案件名", "例：A社 LP", $name).focused($nameFocused)
-            field("案件タイプ", "例：LinkedIn ／ 印刷物", $type)
-            field("クライアント", "例：A社 ／ 社内", $client)
-
-            HStack {
-                Text("Enter で作成").metaStyle(10)
-                Spacer()
-                Button("キャンセル") { presented = false }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.mist)
-                Button {
-                    submit()
-                } label: {
-                    Text("作成")
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 8)
-                        .background(Capsule().fill(Color.signalBlue))
-                }
-                .buttonStyle(.plain)
-            }
-            .font(.system(size: 12))
-        }
-        .padding(28)
-        .frame(width: 420)
-        .background(Color.midnightInk)
-        .onAppear { nameFocused = true }
-    }
-
-    private func field(_ label: String, _ ph: String, _ text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label).metaStyle(10)
-            TextField(ph, text: text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .background(Capsule().strokeBorder(Color.slateBody, lineWidth: 1))
-                .onSubmit { submit() }
-        }
-    }
-
-    private func submit() {
-        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        store.create(name: name, type: type, client: client)
-        presented = false
     }
 }
 

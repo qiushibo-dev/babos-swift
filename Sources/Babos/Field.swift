@@ -10,6 +10,9 @@ struct PhysicsBody {
     var vy: Double = 0
     var r: Double
     var dragging = false
+    /// 漂移方向。**不是每幀重擲**——理由見 `Field.tick`
+    var driftX: Double = 0
+    var driftY: Double = 0
 }
 
 /// 每一幀解算一次的物理場。
@@ -25,7 +28,11 @@ final class Field {
     /// 螢幕保護時把衰減放鬆，讓氣泡漂得更久
     var relaxed = false
 
+    /// 完成動畫進行中的氣泡。位置凍結，交給畫面那邊的關鍵影格接管
+    var finishing: Set<String> = []
+
     private let padding = (top: 12.0, bottom: 12.0, side: 16.0)
+    private var frame = 0
 
     // MARK: 同步
 
@@ -57,6 +64,22 @@ final class Field {
         let cx = bounds.width / 2
         let cy = bounds.height / 2
 
+        // 漂移方向は 0.5 秒ごとにしか変えない。
+        //
+        // HTML 版は毎フレーム乱数を足していたが、そのまま移植したら
+        // 「細かく震えている」と言われた。WebView の描画は輪郭が甘く、
+        // 高周波の揺れが均されて見えていたのだと思う。ネイティブは輪郭が
+        // 立つぶん、同じ強度でもチラつきとして目に入る。
+        //
+        // 方向を保持して緩やかに変えると、震えではなく漂いになる。
+        frame += 1
+        if frame % 30 == 0 {
+            for i in bodies.indices {
+                bodies[i].driftX = Double.random(in: -0.018...0.018)
+                bodies[i].driftY = Double.random(in: -0.018...0.018)
+            }
+        }
+
         // ① 互相推開
         for i in bodies.indices {
             for j in (i + 1)..<bodies.count {
@@ -79,11 +102,11 @@ final class Field {
             }
         }
 
-        // ② 中心力＋微幅晃動、衰減、邊界反彈
+        // ② 中心力＋緩やかな漂い、衰減、邊界反彈
         let damp = relaxed ? 0.972 : 0.935
-        for i in bodies.indices where !bodies[i].dragging {
-            bodies[i].vx += (cx - bodies[i].x) * 0.0007 + Double.random(in: -0.0275...0.0275)
-            bodies[i].vy += (cy - bodies[i].y) * 0.0007 + Double.random(in: -0.0275...0.0275)
+        for i in bodies.indices where !bodies[i].dragging && !finishing.contains(bodies[i].id) {
+            bodies[i].vx += (cx - bodies[i].x) * 0.0007 + bodies[i].driftX
+            bodies[i].vy += (cy - bodies[i].y) * 0.0007 + bodies[i].driftY
             bodies[i].vx *= damp
             bodies[i].vy *= damp
             bodies[i].x += bodies[i].vx
