@@ -34,7 +34,7 @@ struct DetailPanel: View {
             HStack(alignment: .top) {
                 Text(c.name)
                     .font(.system(size: 26, weight: .light))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.ink)
                     .lineLimit(2)
 
                 Spacer()
@@ -86,13 +86,13 @@ struct DetailPanel: View {
                             Circle()
                                 .fill(n <= c.step ? Color.signalBlue : .clear)
                                 .overlay(Circle().strokeBorder(
-                                    n == c.step + 1 ? Color.white : Color.slateBody,
+                                    n == c.step + 1 ? Color.ink : Color.slateBody,
                                     lineWidth: 1))
                                 .frame(width: 22, height: 22)
                             if n <= c.step {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(Color.onAccent)
                             } else {
                                 Text("\(n)")
                                     .font(.system(size: 10, design: .monospaced))
@@ -120,12 +120,12 @@ struct DetailPanel: View {
     /// 開く・打つ・Enter の3動作以外を要求しないこと。
     private func logs(_ c: Case) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("作業ログ").metaStyle()
+            Text(store.t.worklog).metaStyle()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     if c.logs.isEmpty {
-                        Text("まだログがありません。")
+                        Text(store.t.noLogs)
                             .font(.system(size: 12))
                             .foregroundStyle(Color.fog)
                     } else {
@@ -139,7 +139,7 @@ struct DetailPanel: View {
                                     .frame(width: 92, alignment: .leading)
                                 Text(l.text)
                                     .font(.system(size: 12.5))
-                                    .foregroundStyle(.white.opacity(0.88))
+                                    .foregroundStyle(Color.ink.opacity(0.88))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 Button {
                                     store.removeLog(c.id, l.id)
@@ -159,10 +159,10 @@ struct DetailPanel: View {
 
             // ヒントは placeholder に混ぜず右端に置く。混ぜるとボタンに見える
             HStack(spacing: 12) {
-                TextField("ログを追加…", text: $logDraft)
+                TextField(store.t.phLog, text: $logDraft)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12.5))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.ink)
                     .focused($logFocused)
                     .onSubmit {
                         store.addLog(c.id, logDraft)
@@ -170,7 +170,7 @@ struct DetailPanel: View {
                         logFocused = true      // 連続で書けるようにフォーカスを戻す
                     }
 
-                Text("Enter で確定")
+                Text(store.t.phLog.isEmpty ? "" : "Enter")
                     .metaStyle(9)
                     .fixedSize()
                     .opacity(logDraft.isEmpty ? 0.45 : 1)
@@ -188,7 +188,7 @@ struct DetailPanel: View {
 
     private func links(_ c: Case) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("リンク").metaStyle()
+            Text(store.t.links).metaStyle()
 
             ForEach(c.links) { l in
                 HStack(spacing: 10) {
@@ -220,7 +220,7 @@ struct DetailPanel: View {
             Button {
                 store.addLink(c.id, Link(type: .url, url: "https://"))
             } label: {
-                Text("＋ リンクを追加")
+                Text(store.t.addLink)
                     .font(.system(size: 12))
                     .foregroundStyle(Color.mist)
             }
@@ -235,7 +235,7 @@ struct DetailPanel: View {
             Button {
                 store.delete(c.id)
             } label: {
-                Text("この案件を削除")
+                Text(store.t.deleteCase)
                     .metaStyle(10)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 7)
@@ -265,9 +265,9 @@ struct NewCaseForm: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("新規案件")
+                    Text(store.t.newCase)
                         .font(.system(size: 26, weight: .light))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.ink)
                     Text(canGoBack
                          ? "作成すると、この案件が左側に気泡として現れます。"
                          : "まずは1件目を登録してください。")
@@ -291,17 +291,19 @@ struct NewCaseForm: View {
             }
             .padding(.bottom, 26)
 
-            field("案件名", "例：A社 LP", $name).focused($nameFocused)
-            field("案件タイプ", "例：LinkedIn ／ 印刷物 ／ バナー", $type)
-            field("クライアント", "例：A社 ／ 社内", $client)
+            field(store.t.fieldName, store.t.phName, $name).focused($nameFocused)
+            field(store.t.fieldType, store.t.phType, $type)
+            field(store.t.fieldClient, store.t.phClient, $client)
 
+            // 「Enter で作成」の一文は置かない。
+            // 同じことをボタンが言っているうえ、Enter で送れるのは慣習として
+            // 自明。HTML 版には両方あったが、そのまま持ってきたら重複が目立った。
             HStack {
-                Text("Enter で作成").metaStyle(10)
                 Spacer()
                 Button(action: submit) {
-                    Text("作成")
+                    Text(store.t.create)
                         .font(.system(size: 13))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.ink)
                         .padding(.horizontal, 22)
                         .padding(.vertical, 9)
                         .background(Capsule().fill(Color.signalBlue))
@@ -322,7 +324,7 @@ struct NewCaseForm: View {
             TextField(ph, text: text)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.ink)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .background(Capsule().strokeBorder(Color.slateBody, lineWidth: 1))

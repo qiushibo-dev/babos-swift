@@ -9,12 +9,12 @@ struct Sidebar: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                group("ステータス") {
-                    row("全部", store.aliveCount, active: store.statusFilter == nil) {
+                group(store.t.statusGroup) {
+                    row(store.t.all, store.aliveCount, active: store.statusFilter == nil) {
                         store.statusFilter = nil
                     }
                     ForEach(Status.allCases) { s in
-                        row(s.label, store.count(s), active: store.statusFilter == s) {
+                        row(s.label(store.t), store.count(s), active: store.statusFilter == s) {
                             store.statusFilter = (store.statusFilter == s) ? nil : s
                         }
                     }
@@ -22,8 +22,8 @@ struct Sidebar: View {
 
                 let types = store.tally(\.type)
                 if !types.isEmpty {
-                    group("案件タイプ") {
-                        row("全部", store.cases.count, active: store.typeFilter == nil) {
+                    group(store.t.typeGroup) {
+                        row(store.t.all, store.cases.count, active: store.typeFilter == nil) {
                             store.typeFilter = nil
                         }
                         ForEach(types, id: \.0) { name, n in
@@ -36,8 +36,8 @@ struct Sidebar: View {
 
                 let clients = store.tally(\.client)
                 if !clients.isEmpty {
-                    group("クライアント") {
-                        row("全部", store.cases.count, active: store.clientFilter == nil) {
+                    group(store.t.clientGroup) {
+                        row(store.t.all, store.cases.count, active: store.clientFilter == nil) {
                             store.clientFilter = nil
                         }
                         ForEach(clients, id: \.0) { name, n in
@@ -101,7 +101,7 @@ struct CaseList: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     if store.listCases.isEmpty {
-                        Text("該当する案件がありません。")
+                        Text(store.t.noRows)
                             .metaStyle(12)
                             .padding(.vertical, 40)
                     }
@@ -117,7 +117,7 @@ struct CaseList: View {
     private var header: some View {
         HStack(spacing: 14) {
             sortButton(.name).frame(maxWidth: .infinity, alignment: .leading)
-            Text("詳細").metaStyle(10).frame(width: cols[0])
+            Text(store.t.detail).metaStyle(10).frame(width: cols[0])
             sortButton(.step).frame(width: cols[1])
             sortButton(.status).frame(width: cols[2])
             sortButton(.updated).frame(width: cols[3])
@@ -137,7 +137,7 @@ struct CaseList: View {
             }
         } label: {
             HStack(spacing: 3) {
-                Text(key.label)
+                Text(key.label(store.t))
                 if store.sortKey == key {
                     Text(store.sortAscending ? "↑" : "↓")
                 }
@@ -156,7 +156,7 @@ struct CaseList: View {
             HStack(spacing: 10) {
                 Text(c.name)
                     .font(.system(size: 13.5))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.ink)
                     .lineLimit(1)
 
                 Text([c.type, c.client].filter { !$0.isEmpty }.joined(separator: " · "))
@@ -170,12 +170,18 @@ struct CaseList: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text("詳細")
-                .metaStyle(9)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 3)
-                .overlay(Capsule().strokeBorder(Color.slateBody, lineWidth: 1))
-                .frame(width: cols[0])
+            // 行のクリック＝選択、こちら＝完全表示。別々の動作
+            Button {
+                store.detailModal = c
+            } label: {
+                Text(store.t.detail)
+                    .metaStyle(9)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
+                    .overlay(Capsule().strokeBorder(Color.slateBody, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .frame(width: cols[0])
 
             HStack(spacing: 6) {
                 Circle()
@@ -190,7 +196,7 @@ struct CaseList: View {
             Button {
                 store.toggleWaiting(c.id)
             } label: {
-                Text(c.status.label)
+                Text(c.status.label(store.t))
                     .metaStyle(9)
                     .foregroundStyle(c.status == .near ? .white : Color.mist)
                     .padding(.horizontal, 10)

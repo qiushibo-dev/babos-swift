@@ -12,6 +12,22 @@ final class Store {
     var cases: [Case] = []
     var selectedID: String?
 
+    // MARK: 設定（すべて data.json に入る）
+
+    var tags = Tags()
+    var lang: Lang = .ja
+    var theme: Theme = .ameba
+    /// 0 でオフ。既定は 5 分
+    var saverMinutes = 5
+
+    /// 表示文字列。画面側は必ずこれを経由する
+    var t: L { L.of(lang) }
+
+    // MARK: 保存
+
+    var fileState: FileState = .unknown
+    @ObservationIgnored var saveTask: Task<Void, Never>?
+
     /// 右上のカードが何を出しているか。**新規案件は別ウィンドウにしない**——
     /// 詳細カードの位置にそのままフォームを出す（HTML 版と同じ）。
     enum Mode { case detail, new }
@@ -29,13 +45,13 @@ final class Store {
 
     enum SortKey: String, CaseIterable {
         case name, step, status, updated, links
-        var label: String {
+        func label(_ t: L) -> String {
             switch self {
-            case .name:    "案件名"
-            case .step:    "進捗"
-            case .status:  "ステータス"
-            case .updated: "最終更新"
-            case .links:   "リンク"
+            case .name:    t.colCase
+            case .step:    t.progress
+            case .status:  t.colStatus
+            case .updated: t.colUpdated
+            case .links:   t.links
             }
         }
     }
@@ -109,7 +125,46 @@ final class Store {
         guard let i = cases.firstIndex(where: { $0.id == id }) else { return }
         body(&cases[i])
         cases[i].updated = .now
+        scheduleSave()
     }
+
+    // MARK: タグ登記簿
+
+    /// 候補＝登録済みタグ ∪ 実際に使われている値
+    func pool(_ key: KeyPath<Case, String>) -> [String] {
+        let inUse = Set(cases.map { $0[keyPath: key] }.filter { !$0.isEmpty })
+        let registered = Set(key == \Case.type ? tags.type : tags.client)
+        return registered.union(inUse).sorted()
+    }
+
+    func addTag(_ isType: Bool, _ value: String) {
+        let v = value.trimmingCharacters(in: .whitespaces)
+        guard !v.isEmpty else { return }
+        if isType { if !tags.type.contains(v) { tags.type.append(v) } }
+        else      { if !tags.client.contains(v) { tags.client.append(v) } }
+        scheduleSave()
+    }
+
+    /// タグを消すときは、それを使っている案件からも外す
+    func removeTag(_ isType: Bool, _ value: String) {
+        if isType {
+            tags.type.removeAll { $0 == value }
+            for i in cases.indices where cases[i].type == value { cases[i].type = "" }
+            if typeFilter == value { typeFilter = nil }
+        } else {
+            tags.client.removeAll { $0 == value }
+            for i in cases.indices where cases[i].client == value { cases[i].client = "" }
+            if clientFilter == value { clientFilter = nil }
+        }
+        scheduleSave()
+    }
+
+    func usage(_ isType: Bool, _ value: String) -> Int {
+        cases.filter { (isType ? $0.type : $0.client) == value }.count
+    }
+
+    /// 一覧の「詳細」から開く完全表示。sheet(item:) 用
+    var detailModal: Case?
 
     /// 完成確認待ち。10 に到達したら即完了にはせず、必ず一度訊く
     var pendingFinish: Case?
@@ -180,17 +235,26 @@ final class Store {
         mutate(id) { $0.name = t }
     }
 
+    func setMemo(_ id: String, _ text: String) {
+        mutate(id) { $0.memo = text }
+    }
+
     func delete(_ id: String) {
         cases.removeAll { $0.id == id }
         if selectedID == id { selectedID = nil }
+        scheduleSave()
     }
 
     @discardableResult
     func create(name: String, type: String, client: String) -> Case {
         let c = Case(name: name, type: type, client: client)
         cases.append(c)
+        // 新しく入力されたタグは登記簿にも入れておく
+        if !c.type.isEmpty { addTag(true, c.type) }
+        if !c.client.isEmpty { addTag(false, c.client) }
         selectedID = c.id
         mode = .detail
+        scheduleSave()
         return c
     }
 }

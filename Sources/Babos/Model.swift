@@ -49,12 +49,13 @@ enum Status: String, CaseIterable, Identifiable {
     case active, waiting, near, done
     var id: String { rawValue }
 
-    var label: String {
+    /// 画面に日本語を直書きしないための経由点
+    func label(_ t: L) -> String {
         switch self {
-        case .active:  "進行中"
-        case .waiting: "待機"
-        case .near:    "完了間近"
-        case .done:    "完了"
+        case .active:  t.active
+        case .waiting: t.idle
+        case .near:    t.near
+        case .done:    t.done
         }
     }
 }
@@ -79,21 +80,50 @@ enum Encoding {
     }
 }
 
-// MARK: - 配色（Ameba）
+// MARK: - 配色
+
+/// 現在の配色。**画面側は `Color.midnightInk` などの名前をそのまま使い続ける**——
+/// ここを切り替えると全部の色が入れ替わる。
+/// 切り替え時は ContentView に `.id(store.theme)` を付けて木ごと作り直す
+/// （Color は observable ではないので、これが無いと再描画されない）。
+@MainActor var currentTheme: Theme = .ameba
+
+private func pick(_ ameba: Color, _ mono: Color) -> Color {
+    MainActor.assumeIsolated { currentTheme == .ameba ? ameba : mono }
+}
+
+private func rgb(_ r: Double, _ g: Double, _ b: Double) -> Color {
+    Color(red: r, green: g, blue: b)
+}
 
 extension Color {
-    static let midnightInk  = Color(red: 0.00, green: 0.02, blue: 0.18)  // #00052e
-    static let violetWash   = Color(red: 0.02, green: 0.06, blue: 0.35)  // #06105a
-    static let signalBlue   = Color(red: 0.02, green: 0.16, blue: 0.80)  // #0428cb
-    static let haloViolet   = Color(red: 0.69, green: 0.71, blue: 0.86)  // #afb4db
-    static let arcCyan      = Color(red: 0.20, green: 0.99, blue: 1.00)  // #34fcff
-    static let slateBody    = Color(red: 0.31, green: 0.32, blue: 0.40)  // #4f5166
-    static let fog          = Color(red: 0.42, green: 0.42, blue: 0.51)  // #6b6b83
-    static let mist         = Color(red: 0.51, green: 0.52, blue: 0.63)  // #8185a0
+    /// ページ地
+    static var midnightInk: Color { pick(rgb(0.00, 0.02, 0.18), rgb(1, 1, 1)) }
+    /// 気泡区の背景グラデーションの内側
+    static var violetWash: Color  { pick(rgb(0.02, 0.06, 0.35), rgb(0.96, 0.96, 0.97)) }
+    /// 塗りアクション
+    static var signalBlue: Color  { pick(rgb(0.02, 0.16, 0.80), rgb(0.13, 0.13, 0.13)) }
+    /// 気泡の塗り
+    static var haloViolet: Color  { pick(rgb(0.69, 0.71, 0.86), rgb(0.31, 0.32, 0.40)) }
+    /// 気泡のラベル。mono では地が濃くなるので反転する
+    static var bubbleText: Color  { pick(rgb(0.00, 0.02, 0.18), rgb(1, 1, 1)) }
+    /// ホバーと選択の強調。全体で唯一の高彩度
+    static var arcCyan: Color     { pick(rgb(0.20, 0.99, 1.00), rgb(0.13, 0.13, 0.13)) }
+    /// 枠線
+    static var slateBody: Color   { pick(rgb(0.31, 0.32, 0.40), rgb(0.86, 0.86, 0.87)) }
+    /// 補助文字
+    static var fog: Color         { pick(rgb(0.42, 0.42, 0.51), rgb(0.51, 0.52, 0.63)) }
+    static var mist: Color        { pick(rgb(0.51, 0.52, 0.63), rgb(0.42, 0.42, 0.51)) }
+    /// 主要文字。mono では黒に寄せる
+    static var ink: Color         { pick(.white, rgb(0.13, 0.13, 0.13)) }
+    /// **塗りの上に乗る文字は主題で反転させない。**
+    /// accent はどちらの主題でも暗いので、常に白でないと読めなくなる
+    static var onAccent: Color    { .white }
 
-    static let hairline     = Color(red: 0.31, green: 0.32, blue: 0.40).opacity(0.45)
-    static let rowHover     = Color(red: 0.02, green: 0.06, blue: 0.35).opacity(0.55)
-    static let rowSelected  = Color(red: 0.02, green: 0.06, blue: 0.35).opacity(0.85)
+    static var hairline: Color    { pick(rgb(0.31, 0.32, 0.40).opacity(0.45),
+                                         rgb(0.86, 0.86, 0.87)) }
+    static var rowSelected: Color { pick(rgb(0.02, 0.06, 0.35).opacity(0.85),
+                                         rgb(0.94, 0.94, 0.95)) }
 }
 
 // MARK: - 字級

@@ -3,6 +3,8 @@ import SwiftUI
 /// 氣泡區。這個 app 的招牌。
 struct BubbleField: View {
     @Bindable var store: Store
+    /// スクリーンセーバー時は減衰を緩めてゆっくり漂わせる
+    var relaxed = false
 
     @State private var field = Field()
     /// 拖曳超過 5px 就不算點選，避免拖完順手選到別的案子
@@ -20,9 +22,12 @@ struct BubbleField: View {
                 backdrop
                 bubbles
             }
+            .overlay(alignment: .top) { chips }
+            .overlay(alignment: .bottom) { legend }
             .background { driver }        // 物理はここで駆動する
             .onChange(of: geo.size, initial: true) { _, new in
                 field.bounds = new
+                field.relaxed = relaxed
                 field.sync(cases)
             }
             .onChange(of: cases.map(\.step)) { _, _ in field.sync(cases) }
@@ -61,6 +66,62 @@ struct BubbleField: View {
             endRadiusFraction: 0.74)
     }
 
+    // MARK: 絞り込みチップ
+
+    /// サイドバーと同じ条件だが、こちらは気泡を見ながら切り替えるためのもの。
+    /// セーバー中は出さない。
+    private var chips: some View {
+        HStack(spacing: 8) {
+            chip(nil, store.t.all, store.aliveCount)
+            ForEach([Status.active, .waiting, .near], id: \.self) { s in
+                chip(s, s.label(store.t), store.count(s))
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .opacity(relaxed ? 0 : 1)
+        .allowsHitTesting(!relaxed)
+    }
+
+    private func chip(_ s: Status?, _ label: String, _ n: Int) -> some View {
+        let on = store.statusFilter == s
+        return Button {
+            store.statusFilter = (store.statusFilter == s) ? nil : s
+        } label: {
+            HStack(spacing: 6) {
+                Text(label).font(.system(size: 11.5))
+                Text("\(n)").font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(Color.fog)
+            }
+            .foregroundStyle(on ? Color.ink : Color.mist)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .overlay(Capsule().strokeBorder(on ? Color.ink : Color.slateBody, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: 凡例
+
+    /// 濃淡が何を意味するかの唯一の説明。**気泡そのものには
+    /// リングも％も付けない**ので、読み方はここでしか示されない。
+    private var legend: some View {
+        HStack(spacing: 10) {
+            Text(store.t.legendStart).metaStyle(10)
+            LinearGradient(
+                colors: [Color.haloViolet.opacity(0.18), Color.haloViolet],
+                startPoint: .leading, endPoint: .trailing)
+                .frame(height: 8)
+                .clipShape(Capsule())
+            Text(store.t.legendEnd).metaStyle(10)
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 16)
+        .opacity(relaxed ? 0 : 1)
+        .allowsHitTesting(false)
+    }
+
     // MARK: 気泡
 
     private var bubbles: some View {
@@ -90,7 +151,7 @@ struct BubbleField: View {
                 if d >= 52 {
                     Text(c.name)
                         .font(.system(size: 9 + max(0, d - 42) * 0.034))
-                        .foregroundStyle(Color.midnightInk)
+                        .foregroundStyle(Color.bubbleText)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .padding(.horizontal, 6)

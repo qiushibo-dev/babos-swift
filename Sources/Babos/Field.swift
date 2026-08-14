@@ -28,6 +28,11 @@ final class Field {
     /// 螢幕保護時把衰減放鬆，讓氣泡漂得更久
     var relaxed = false
 
+    /// 漂移強度。**0 で完全静止**（制作者の指定により既定は 0）。
+    /// 0.018 くらいでゆっくり漂う。HTML 版は毎フレーム乱数で
+    /// 実質 0.0275 相当だったが、ネイティブでは震えとして目に入る。
+    var driftStrength: Double = 0
+
     /// 完成動畫進行中的氣泡。位置凍結，交給畫面那邊的關鍵影格接管
     var finishing: Set<String> = []
 
@@ -73,10 +78,10 @@ final class Field {
         //
         // 方向を保持して緩やかに変えると、震えではなく漂いになる。
         frame += 1
-        if frame % 30 == 0 {
+        if driftStrength > 0, frame % 30 == 0 {
             for i in bodies.indices {
-                bodies[i].driftX = Double.random(in: -0.018...0.018)
-                bodies[i].driftY = Double.random(in: -0.018...0.018)
+                bodies[i].driftX = Double.random(in: -driftStrength...driftStrength)
+                bodies[i].driftY = Double.random(in: -driftStrength...driftStrength)
             }
         }
 
