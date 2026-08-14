@@ -130,7 +130,7 @@ struct SettingsSheet: View {
                             Button {
                                 store.removeTag(isType, tag)
                             } label: {
-                                Image(systemName: "xmark").font(Typo.body(7))
+                                Image(systemName: "xmark").font(.system(size: 7, weight: .medium))
                                     .foregroundStyle(Color.fog)
                             }
                             .buttonStyle(.plain)
@@ -231,6 +231,7 @@ struct CaseDetailSheet: View {
                     .padding(.bottom, 20)
 
                 HStack(alignment: .top, spacing: 20) {
+                    // 左右を等分に。TextEditor は放っておくと横へ伸びてログ側を潰す
                     VStack(alignment: .leading, spacing: 8) {
                         Text(t.notes).metaStyle(10)
                         TextEditor(text: $memo)
@@ -240,6 +241,7 @@ struct CaseDetailSheet: View {
                             .padding(10)
                             .overlay(RoundedRectangle(cornerRadius: 8)
                                 .strokeBorder(Color.slateBody, lineWidth: 1))
+                        .frame(maxWidth: .infinity)
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -266,6 +268,7 @@ struct CaseDetailSheet: View {
                         }
                         .overlay(RoundedRectangle(cornerRadius: 8)
                             .strokeBorder(Color.slateBody, lineWidth: 1))
+                        .frame(maxWidth: .infinity)
                     }
                 }
                 .frame(height: 300)

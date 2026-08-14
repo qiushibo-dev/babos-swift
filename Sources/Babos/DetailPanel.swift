@@ -12,15 +12,25 @@ struct DetailPanel: View {
         if store.mode == .new || store.cases.isEmpty {
             NewCaseForm(store: store)
         } else if let c = store.current {
+            // 見出しと削除ボタンは固定、中身だけスクロールさせる。
+            // リンクが増えると縦に伸びるので、全体を固定高のまま積むと
+            // 「この案件を削除」が枠外へ押し出される（実際そうなった）。
             VStack(alignment: .leading, spacing: 0) {
                 header(c)
                 Divider().overlay(Color.hairline)
-                stepper(c)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        stepper(c)
+                        Divider().overlay(Color.hairline)
+                        logs(c)
+                        Divider().overlay(Color.hairline)
+                        links(c)
+                    }
+                }
+                .scrollIndicators(.automatic)
+
                 Divider().overlay(Color.hairline)
-                logs(c)
-                Divider().overlay(Color.hairline)
-                links(c)
-                Spacer(minLength: 0)
                 footer(c)
             }
             .padding(24)
@@ -32,10 +42,10 @@ struct DetailPanel: View {
     private func header(_ c: Case) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
-                Text(c.name)
-                    .font(Typo.body(26, .light))
-                    .foregroundStyle(Color.ink)
-                    .lineLimit(2)
+                // 押すとその場で書き換わる
+                InlineText(text: c.name,
+                           font: Typo.body(26, .light),
+                           color: .ink) { store.rename(c.id, $0) }
 
                 Spacer()
 
@@ -44,7 +54,7 @@ struct DetailPanel: View {
                     store.mode = .new
                 } label: {
                     Image(systemName: "xmark")
-                        .font(Typo.body(10))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(Color.mist)
                         .frame(width: 26, height: 26)
                         .overlay(Circle().strokeBorder(Color.slateBody, lineWidth: 1))
@@ -52,14 +62,29 @@ struct DetailPanel: View {
                 .buttonStyle(.plain)
             }
 
+            // タイプとクライアントもその場で編集。既存のタグから候補を出す
             HStack(spacing: 8) {
-                sub(c.type.isEmpty ? "＋ タイプ" : c.type)
+                InlineText(text: c.type,
+                           placeholder: "＋ \(store.t.fieldType)",
+                           font: Typo.mono(11), color: .mist,
+                           suggestions: store.pool(\.type)) {
+                    store.setType(c.id, $0)
+                }
                 Text("／").metaStyle()
-                sub(c.client.isEmpty ? "＋ クライアント" : c.client)
+
+                InlineText(text: c.client,
+                           placeholder: "＋ \(store.t.fieldClient)",
+                           font: Typo.mono(11), color: .mist,
+                           suggestions: store.pool(\.client)) {
+                    store.setClient(c.id, $0)
+                }
                 Text("／").metaStyle()
+
                 sub(c.created.formatted(.dateTime.year().month(.twoDigits).day(.twoDigits)))
                 Text("／").metaStyle()
                 sub(c.updated.formatted(.dateTime.month(.twoDigits).day(.twoDigits).hour().minute()))
+
+                Spacer(minLength: 0)
             }
         }
         .padding(.bottom, 18)
@@ -91,7 +116,7 @@ struct DetailPanel: View {
                                 .frame(width: 22, height: 22)
                             if n <= c.step {
                                 Image(systemName: "checkmark")
-                                    .font(Typo.body(9, .bold))
+                                    .font(.system(size: 9, weight: .medium))
                                     .foregroundStyle(Color.onAccent)
                             } else {
                                 Text("\(n)")
@@ -145,7 +170,7 @@ struct DetailPanel: View {
                                     store.removeLog(c.id, l.id)
                                 } label: {
                                     Image(systemName: "xmark")
-                                        .font(Typo.body(8))
+                                        .font(.system(size: 8, weight: .medium))
                                         .foregroundStyle(Color.fog)
                                 }
                                 .buttonStyle(.plain)
@@ -210,15 +235,16 @@ struct DetailPanel: View {
                         store.removeLink(c.id, l.id)
                     } label: {
                         Image(systemName: "xmark")
-                            .font(Typo.body(8))
+                            .font(.system(size: 8, weight: .medium))
                             .foregroundStyle(Color.fog)
                     }
                     .buttonStyle(.plain)
                 }
             }
 
+            // 空の https:// をいきなり足すのではなく、種類と URL を訊く
             Button {
-                store.addLink(c.id, Link(type: .url, url: "https://"))
+                store.addLinkSheet = c
             } label: {
                 Text(store.t.addLink)
                     .font(Typo.body(12))
@@ -281,7 +307,7 @@ struct NewCaseForm: View {
                         store.mode = .detail
                     } label: {
                         Image(systemName: "xmark")
-                            .font(Typo.body(10))
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(Color.mist)
                             .frame(width: 26, height: 26)
                             .overlay(Circle().strokeBorder(Color.slateBody, lineWidth: 1))

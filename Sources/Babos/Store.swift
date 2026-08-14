@@ -125,7 +125,26 @@ final class Store {
         guard let i = cases.firstIndex(where: { $0.id == id }) else { return }
         body(&cases[i])
         cases[i].updated = .now
+        // **単に開いて見ただけは「更新」ではない。**
+        // 書き換えたときだけ日時が動き、一覧で一度光る。
+        // 既定の並びは「最終更新の新しい順」なので、書き換えた案件は
+        // そのまま最上段へ来る（別の列で並べ替えている間は動かない）。
+        lastTouched = id
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.5))
+            if lastTouched == id { lastTouched = nil }
+        }
         scheduleSave()
+    }
+
+    func setType(_ id: String, _ v: String) {
+        mutate(id) { $0.type = v }
+        if !v.isEmpty { addTag(true, v) }
+    }
+
+    func setClient(_ id: String, _ v: String) {
+        mutate(id) { $0.client = v }
+        if !v.isEmpty { addTag(false, v) }
     }
 
     // MARK: タグ登記簿
@@ -165,6 +184,11 @@ final class Store {
 
     /// 一覧の「詳細」から開く完全表示。sheet(item:) 用
     var detailModal: Case?
+    /// リンク追加のシート
+    var addLinkSheet: Case?
+
+    /// 直近に書き換えた案件。一覧で一度だけ光らせる
+    var lastTouched: String?
 
     /// 完成確認待ち。10 に到達したら即完了にはせず、必ず一度訊く
     var pendingFinish: Case?

@@ -219,7 +219,11 @@ struct CaseList: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 50)
-        .background(selected ? Color.rowSelected : .clear)
+        // 書き換えた直後は一度だけ光らせる（1.5秒で消える）
+            .background(
+                c.id == store.lastTouched ? Color.arcCyan.opacity(0.20)
+                : selected ? Color.rowSelected : .clear)
+            .animation(.easeOut(duration: 0.9), value: store.lastTouched)
         .contentShape(Rectangle())
         .onTapGesture { store.selectedID = c.id }
     }

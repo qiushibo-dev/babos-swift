@@ -140,13 +140,18 @@ final class Field {
         bodies[i].dragging = true
     }
 
-    /// 拖曳時把速度設成位移量，放手之後才會留下慣性
+    /// 拖曳時把速度設成位移量，放手之後才會留下慣性。
+    /// **枠内に収める。** 掴んだまま外へ引っぱると、気泡が隣のカードの上まで
+    /// はみ出して描かれてしまう。
     func drag(_ id: String, to p: CGPoint) {
         guard let i = bodies.firstIndex(where: { $0.id == id }) else { return }
-        bodies[i].vx = p.x - bodies[i].x
-        bodies[i].vy = p.y - bodies[i].y
-        bodies[i].x = p.x
-        bodies[i].y = p.y
+        let r = bodies[i].r
+        let x = min(max(p.x, padding.side + r), bounds.width - padding.side - r)
+        let y = min(max(p.y, padding.top + r), bounds.height - padding.bottom - r)
+        bodies[i].vx = x - bodies[i].x
+        bodies[i].vy = y - bodies[i].y
+        bodies[i].x = x
+        bodies[i].y = y
     }
 
     func endDrag(_ id: String) {

@@ -40,6 +40,7 @@ struct ContentView: View {
         .onChange(of: store.saverMinutes) { _, m in idle.limit = m }
         .sheet(isPresented: $settingsOpen) { SettingsSheet(store: store) }
         .sheet(item: $store.detailModal) { c in CaseDetailSheet(store: store, caseID: c.id) }
+        .sheet(item: $store.addLinkSheet) { c in AddLinkSheet(store: store, caseID: c.id) }
         // 10 に到達しても即完了にはしない。必ず一度訊く
         .alert(store.pendingFinish.map { store.t.confirmFinish($0.name) } ?? "",
                isPresented: .init(get: { store.pendingFinish != nil },
@@ -133,7 +134,7 @@ struct TopBar: View {
         HStack(spacing: 16) {
             Button { settingsOpen = true } label: {
                 Image(systemName: "gearshape")
-                    .font(Typo.body(15))
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(Color.mist)
             }
             .buttonStyle(.plain)

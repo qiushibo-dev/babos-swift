@@ -22,6 +22,12 @@ struct BubbleField: View {
                 backdrop
                 bubbles
             }
+            // 気泡区の外へは描かない。掴んで引っぱったとき、
+
+            // 隣の詳細カードの上まで円が出てしまうため
+
+            .clipped()
+
             .overlay(alignment: .top) { chips }
             .overlay(alignment: .bottom) { legend }
             .background { driver }        // 物理はここで駆動する
