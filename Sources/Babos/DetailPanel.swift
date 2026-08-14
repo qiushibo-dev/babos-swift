@@ -15,8 +15,10 @@ struct DetailPanel: View {
             // 見出しと削除ボタンは固定、中身だけスクロールさせる。
             // リンクが増えると縦に伸びるので、全体を固定高のまま積むと
             // 「この案件を削除」が枠外へ押し出される（実際そうなった）。
+            // 余白は各ブロックの内側に持たせる。外側にまとめて掛けると、
+            // スクロールバーがその余白の内側に出て文字の上に重なる。
             VStack(alignment: .leading, spacing: 0) {
-                header(c)
+                header(c).padding(.horizontal, 24)
                 Divider().overlay(Color.hairline)
 
                 ScrollView {
@@ -27,13 +29,14 @@ struct DetailPanel: View {
                         Divider().overlay(Color.hairline)
                         links(c)
                     }
+                    .padding(.horizontal, 24)
                 }
                 .scrollIndicators(.automatic)
 
                 Divider().overlay(Color.hairline)
-                footer(c)
+                footer(c).padding(.horizontal, 24)
             }
-            .padding(24)
+            .padding(.vertical, 24)
         }
     }
 

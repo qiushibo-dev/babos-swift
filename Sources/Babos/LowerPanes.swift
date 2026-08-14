@@ -99,7 +99,12 @@ struct CaseList: View {
             Divider().overlay(Color.hairline)
 
             ScrollView {
-                LazyVStack(spacing: 0) {
+                // **LazyVStack にしない。** 遅延生成だとスクロール中に行が
+                // 破棄・再生成され、そのたび .animation が「状態が変わった」と
+                // 誤認して背景色だけ遅れて追いかけてくる（区切り線は即座に
+                // 動くので、色板だけが行の間を滑って見える）。
+                // 数十件規模なので全件描いて構わない。
+                VStack(spacing: 0) {
                     if store.listCases.isEmpty {
                         Text(store.t.noRows)
                             .metaStyle(12)
@@ -219,11 +224,16 @@ struct CaseList: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 50)
-        // 書き換えた直後は一度だけ光らせる（1.5秒で消える）
-            .background(
-                c.id == store.lastTouched ? Color.arcCyan.opacity(0.20)
-                : selected ? Color.rowSelected : .clear)
-            .animation(.easeOut(duration: 0.9), value: store.lastTouched)
+        .background(selected ? Color.rowSelected : .clear)
+        // 書き換えた直後だけ光らせる。**背景に混ぜず、別レイヤーで重ねる。**
+        // 背景に animation を掛けると、選択色やスクロール時の再生成にも
+        // 巻き込まれて色が遅れて追いかけてくる。
+        .overlay {
+            Color.arcCyan
+                .opacity(c.id == store.lastTouched ? 0.20 : 0)
+                .animation(.easeOut(duration: 0.9), value: c.id == store.lastTouched)
+                .allowsHitTesting(false)
+        }
         .contentShape(Rectangle())
         .onTapGesture { store.selectedID = c.id }
     }
