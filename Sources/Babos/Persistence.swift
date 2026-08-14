@@ -77,6 +77,11 @@ extension Store {
         saverMinutes = s.saverMinutes
         sortKey = SortKey(rawValue: s.sortKey) ?? .updated
         sortAscending = s.sortAscending
+
+        // **色を実際に切り替えているのはこの全域フラグ。**
+        // store.theme に入れただけでは何も変わらない。
+        // ここを忘れていたので、再起動すると常に既定の配色に戻っていた。
+        currentTheme = theme
     }
 
     private var snapshot: Snapshot {

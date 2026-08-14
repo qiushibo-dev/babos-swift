@@ -86,10 +86,19 @@ enum Encoding {
 /// ここを切り替えると全部の色が入れ替わる。
 /// 切り替え時は ContentView に `.id(store.theme)` を付けて木ごと作り直す
 /// （Color は observable ではないので、これが無いと再描画されない）。
-@MainActor var currentTheme: Theme = .ameba
+/// `nonisolated(unsafe)` にしてある。
+///
+/// **`@MainActor` ＋ `MainActor.assumeIsolated` にしてはいけない。**
+/// SwiftUI が色を評価するのは主スレッドとは限らず、そこで assumeIsolated を
+/// 通すと動作は未定義。release ビルドではクラッシュせず、
+/// **黙って壊れた値を返す**——気泡区と検索欄が真っ白になった。
+///
+/// 書き込むのは設定画面（主スレッド）だけ、読むのは色の判定だけなので、
+/// データ競合が起きても最悪1フレーム古い色が出るだけ。
+nonisolated(unsafe) var currentTheme: Theme = .ameba
 
 private func pick(_ ameba: Color, _ mono: Color) -> Color {
-    MainActor.assumeIsolated { currentTheme == .ameba ? ameba : mono }
+    currentTheme == .ameba ? ameba : mono
 }
 
 private func rgb(_ r: Double, _ g: Double, _ b: Double) -> Color {
