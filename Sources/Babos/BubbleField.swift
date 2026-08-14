@@ -90,8 +90,8 @@ struct BubbleField: View {
             store.statusFilter = (store.statusFilter == s) ? nil : s
         } label: {
             HStack(spacing: 6) {
-                Text(label).font(.system(size: 11.5))
-                Text("\(n)").font(.system(size: 10, design: .monospaced))
+                Text(label).font(Typo.body(11.5))
+                Text("\(n)").font(Typo.mono(10))
                     .foregroundStyle(Color.fog)
             }
             .foregroundStyle(on ? Color.ink : Color.mist)
@@ -150,7 +150,7 @@ struct BubbleField: View {
                 // 直徑夠大才顯示名稱，小氣泡放字只會糊掉
                 if d >= 52 {
                     Text(c.name)
-                        .font(.system(size: 9 + max(0, d - 42) * 0.034))
+                        .font(Typo.body(9 + max(0, d - 42) * 0.034))
                         .foregroundStyle(Color.bubbleText)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)

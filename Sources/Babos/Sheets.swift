@@ -14,7 +14,7 @@ struct SettingsSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(t.settings)
-                .font(.system(size: 22, weight: .light))
+                .font(Typo.body(22, .light))
                 .foregroundStyle(Color.ink)
                 .padding(.bottom, 24)
 
@@ -39,7 +39,7 @@ struct SettingsSheet: View {
 
                     section(t.tagManagement) {
                         Text(t.tagHint)
-                            .font(.system(size: 11))
+                            .font(Typo.body(11))
                             .foregroundStyle(Color.fog)
                             .padding(.bottom, 10)
                         tagGroup(isType: true,  title: t.typeGroup,   draft: $newType)
@@ -83,7 +83,7 @@ struct SettingsSheet: View {
             ForEach(items) { item in
                 Button { tap(item) } label: {
                     Text(label(item))
-                        .font(.system(size: 12))
+                        .font(Typo.body(12))
                         .foregroundStyle(item == current ? Color.onAccent : Color.mist)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity)
@@ -106,7 +106,7 @@ struct SettingsSheet: View {
                 set: { store.saverMinutes = $0; store.scheduleSave() }))
 
             Text(store.saverMinutes == 0 ? t.ssOff : "\(store.saverMinutes)\(t.minUnit)")
-                .font(.system(size: 11, design: .monospaced))
+                .font(Typo.mono(11))
                 .foregroundStyle(Color.mist)
                 .frame(width: 56, alignment: .trailing)
         }
@@ -118,19 +118,19 @@ struct SettingsSheet: View {
 
             let pool = store.pool(isType ? \Case.type : \Case.client)
             if pool.isEmpty {
-                Text(t.noTags).font(.system(size: 11)).foregroundStyle(Color.fog)
+                Text(t.noTags).font(Typo.body(11)).foregroundStyle(Color.fog)
             } else {
                 FlowLayout(spacing: 6) {
                     ForEach(pool, id: \.self) { tag in
                         HStack(spacing: 6) {
-                            Text(tag).font(.system(size: 11)).foregroundStyle(Color.ink)
+                            Text(tag).font(Typo.body(11)).foregroundStyle(Color.ink)
                             Text("\(store.usage(isType, tag))")
-                                .font(.system(size: 10, design: .monospaced))
+                                .font(Typo.mono(10))
                                 .foregroundStyle(Color.fog)
                             Button {
                                 store.removeTag(isType, tag)
                             } label: {
-                                Image(systemName: "xmark").font(.system(size: 7))
+                                Image(systemName: "xmark").font(Typo.body(7))
                                     .foregroundStyle(Color.fog)
                             }
                             .buttonStyle(.plain)
@@ -145,7 +145,7 @@ struct SettingsSheet: View {
             HStack(spacing: 8) {
                 TextField(t.phTag, text: draft)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 12))
+                    .font(Typo.body(12))
                     .foregroundStyle(Color.ink)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
@@ -154,7 +154,7 @@ struct SettingsSheet: View {
 
                 Button(t.tagAdd) { commitTag(isType, draft) }
                     .buttonStyle(.plain)
-                    .font(.system(size: 12))
+                    .font(Typo.body(12))
                     .foregroundStyle(Color.mist)
             }
         }
@@ -178,19 +178,19 @@ struct SettingsSheet: View {
                 switch store.fileState {
                 case .ok(let path):
                     Text(path)
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(Typo.mono(10))
                         .foregroundStyle(Color.mist)
                         .textSelection(.enabled)
                 case .failed(let msg):
                     VStack(alignment: .leading, spacing: 2) {
                         Text(t.storageFailed)
-                            .font(.system(size: 11))
+                            .font(Typo.body(11))
                             .foregroundStyle(.red)
-                        Text(msg).font(.system(size: 10)).foregroundStyle(Color.fog)
+                        Text(msg).font(Typo.body(10)).foregroundStyle(Color.fog)
                     }
                 case .unknown:
                     Text(t.storagePending)
-                        .font(.system(size: 11))
+                        .font(Typo.body(11))
                         .foregroundStyle(Color.fog)
                 }
             }
@@ -200,7 +200,7 @@ struct SettingsSheet: View {
     private func row(_ k: String, _ v: String) -> some View {
         HStack {
             Text(k).metaStyle(10).frame(width: 110, alignment: .leading)
-            Text(v).font(.system(size: 12)).foregroundStyle(Color.mist)
+            Text(v).font(Typo.body(12)).foregroundStyle(Color.mist)
         }
     }
 }
@@ -223,7 +223,7 @@ struct CaseDetailSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             if let c = item {
                 Text(c.name)
-                    .font(.system(size: 20, weight: .light))
+                    .font(Typo.body(20, .light))
                     .foregroundStyle(Color.ink)
                 Text([c.type, c.client, "\(c.step)/10"].filter { !$0.isEmpty }.joined(separator: " ／ "))
                     .metaStyle(10)
@@ -234,7 +234,7 @@ struct CaseDetailSheet: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(t.notes).metaStyle(10)
                         TextEditor(text: $memo)
-                            .font(.system(size: 12.5))
+                            .font(Typo.body(12.5))
                             .foregroundStyle(Color.ink)
                             .scrollContentBackground(.hidden)
                             .padding(10)
@@ -247,7 +247,7 @@ struct CaseDetailSheet: View {
                         ScrollView {
                             VStack(alignment: .leading, spacing: 12) {
                                 if c.logs.isEmpty {
-                                    Text(t.noLogs).font(.system(size: 11))
+                                    Text(t.noLogs).font(Typo.body(11))
                                         .foregroundStyle(Color.fog)
                                 }
                                 ForEach(c.logs.sorted { $0.ts > $1.ts }) { l in
@@ -256,7 +256,7 @@ struct CaseDetailSheet: View {
                                             .day(.twoDigits).hour().minute()))
                                             .metaStyle(9)
                                         Text(l.text)
-                                            .font(.system(size: 12))
+                                            .font(Typo.body(12))
                                             .foregroundStyle(Color.ink.opacity(0.88))
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -294,7 +294,7 @@ struct CaseDetailSheet: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .font(.system(size: 12))
+                .font(Typo.body(12))
                 .padding(.top, 18)
             }
         }

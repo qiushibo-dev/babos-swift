@@ -135,13 +135,3 @@ extension Color {
                                          rgb(0.94, 0.94, 0.95)) }
 }
 
-// MARK: - 字級
-
-/// `.meta` 相當於 HTML 版的等寬小標籤：11px、字距 0.085em、大寫。
-extension View {
-    func metaStyle(_ size: CGFloat = 11) -> some View {
-        self.font(.system(size: size, design: .monospaced))
-            .tracking(size * 0.085)
-            .foregroundStyle(Color.fog)
-    }
-}

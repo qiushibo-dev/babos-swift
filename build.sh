@@ -21,8 +21,12 @@ swift build -c release --scratch-path "$SCRATCH"
 BIN="$SCRATCH/release/Babos"
 
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/Fonts"
 cp "$BIN" "$APP/Contents/MacOS/Babos"
+
+# 同梱フォント。Info.plist の ATSApplicationFontsPath がこのフォルダを指すので、
+# 起動時に macOS が勝手に登録してくれる（自前で CTFontManager を叩く必要はない）。
+cp Resources/Fonts/*.ttf "$APP/Contents/Resources/Fonts/"
 
 # Info.plist が無いと Dock に出ない、メニューバーも壊れる。
 # LSUIElement を入れないこと（入れると通常のウィンドウアプリにならない）。
@@ -40,6 +44,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundlePackageType</key>       <string>APPL</string>
   <key>NSHighResolutionCapable</key>   <true/>
   <key>LSMinimumSystemVersion</key>    <string>14.0</string>
+  <key>ATSApplicationFontsPath</key>   <string>Fonts</string>
 </dict>
 </plist>
 PLIST

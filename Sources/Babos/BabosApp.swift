@@ -7,6 +7,7 @@ struct BabosApp: App {
     var body: some Scene {
         WindowGroup("Babos") {
             ContentView(store: store)
+                .onAppear { Typo.report() }
                 .frame(minWidth: 1080, minHeight: 640)
                 .preferredColorScheme(.dark)
         }
@@ -132,14 +133,14 @@ struct TopBar: View {
         HStack(spacing: 16) {
             Button { settingsOpen = true } label: {
                 Image(systemName: "gearshape")
-                    .font(.system(size: 15))
+                    .font(Typo.body(15))
                     .foregroundStyle(Color.mist)
             }
             .buttonStyle(.plain)
 
             TextField(store.t.searchPh, text: $store.query)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13))
+                .font(Typo.body(13))
                 .foregroundStyle(Color.ink)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -152,7 +153,7 @@ struct TopBar: View {
                 store.mode = .new
             } label: {
                 Text(store.t.newCaseBtn)
-                    .font(.system(size: 13))
+                    .font(Typo.body(13))
                     .foregroundStyle(Color.onAccent)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 9)

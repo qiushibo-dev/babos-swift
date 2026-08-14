@@ -66,11 +66,11 @@ struct Sidebar: View {
         Button(action: tap) {
             HStack {
                 Text(label)
-                    .font(.system(size: 13))
-                    .foregroundStyle(active ? .white : Color.mist)
+                    .font(Typo.body(13))
+                    .foregroundStyle(active ? Color.ink : Color.mist)
                 Spacer()
                 Text("\(count)")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(Typo.mono(11))
                     .foregroundStyle(Color.fog)
             }
             .padding(.horizontal, 12)
@@ -143,7 +143,7 @@ struct CaseList: View {
                 }
             }
             .metaStyle(10)
-            .foregroundStyle(store.sortKey == key ? .white : Color.fog)
+            .foregroundStyle(store.sortKey == key ? Color.ink : Color.fog)
         }
         .buttonStyle(.plain)
     }
@@ -155,12 +155,12 @@ struct CaseList: View {
             // 案件名＋タグ＋重要度
             HStack(spacing: 10) {
                 Text(c.name)
-                    .font(.system(size: 13.5))
+                    .font(Typo.body(13.5))
                     .foregroundStyle(Color.ink)
                     .lineLimit(1)
 
                 Text([c.type, c.client].filter { !$0.isEmpty }.joined(separator: " · "))
-                    .font(.system(size: 11))
+                    .font(Typo.body(11))
                     .foregroundStyle(Color.fog)
                     .lineLimit(1)
 
@@ -188,7 +188,7 @@ struct CaseList: View {
                     .fill(Color.haloViolet.opacity(Encoding.opacity(c.progress)))
                     .frame(width: 10, height: 10)
                 Text("\(Int(c.progress * 100))%")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(Typo.mono(11))
                     .foregroundStyle(Color.mist)
             }
             .frame(width: cols[1])
@@ -198,7 +198,7 @@ struct CaseList: View {
             } label: {
                 Text(c.status.label(store.t))
                     .metaStyle(9)
-                    .foregroundStyle(c.status == .near ? .white : Color.mist)
+                    .foregroundStyle(c.status == .near ? Color.ink : Color.mist)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 3)
                     .overlay(Capsule().strokeBorder(
@@ -208,12 +208,12 @@ struct CaseList: View {
             .frame(width: cols[2])
 
             Text(c.updated.formatted(.dateTime.month(.twoDigits).day(.twoDigits)))
-                .font(.system(size: 11, design: .monospaced))
+                .font(Typo.mono(11))
                 .foregroundStyle(Color.fog)
                 .frame(width: cols[3])
 
             Text("\(c.links.count)")
-                .font(.system(size: 11, design: .monospaced))
+                .font(Typo.mono(11))
                 .foregroundStyle(Color.fog)
                 .frame(width: cols[4])
         }

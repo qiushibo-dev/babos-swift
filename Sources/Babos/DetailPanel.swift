@@ -33,7 +33,7 @@ struct DetailPanel: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
                 Text(c.name)
-                    .font(.system(size: 26, weight: .light))
+                    .font(Typo.body(26, .light))
                     .foregroundStyle(Color.ink)
                     .lineLimit(2)
 
@@ -44,7 +44,7 @@ struct DetailPanel: View {
                     store.mode = .new
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 10))
+                        .font(Typo.body(10))
                         .foregroundStyle(Color.mist)
                         .frame(width: 26, height: 26)
                         .overlay(Circle().strokeBorder(Color.slateBody, lineWidth: 1))
@@ -91,11 +91,11 @@ struct DetailPanel: View {
                                 .frame(width: 22, height: 22)
                             if n <= c.step {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 9, weight: .bold))
+                                    .font(Typo.body(9, .bold))
                                     .foregroundStyle(Color.onAccent)
                             } else {
                                 Text("\(n)")
-                                    .font(.system(size: 10, design: .monospaced))
+                                    .font(Typo.mono(10))
                                     .foregroundStyle(Color.mist)
                             }
                         }
@@ -126,7 +126,7 @@ struct DetailPanel: View {
                 VStack(alignment: .leading, spacing: 10) {
                     if c.logs.isEmpty {
                         Text(store.t.noLogs)
-                            .font(.system(size: 12))
+                            .font(Typo.body(12))
                             .foregroundStyle(Color.fog)
                     } else {
                         ForEach(c.logs.sorted { $0.ts > $1.ts }) { l in
@@ -138,14 +138,14 @@ struct DetailPanel: View {
                                     .fixedSize()
                                     .frame(width: 92, alignment: .leading)
                                 Text(l.text)
-                                    .font(.system(size: 12.5))
+                                    .font(Typo.body(12.5))
                                     .foregroundStyle(Color.ink.opacity(0.88))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 Button {
                                     store.removeLog(c.id, l.id)
                                 } label: {
                                     Image(systemName: "xmark")
-                                        .font(.system(size: 8))
+                                        .font(Typo.body(8))
                                         .foregroundStyle(Color.fog)
                                 }
                                 .buttonStyle(.plain)
@@ -161,7 +161,7 @@ struct DetailPanel: View {
             HStack(spacing: 12) {
                 TextField(store.t.phLog, text: $logDraft)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 12.5))
+                    .font(Typo.body(12.5))
                     .foregroundStyle(Color.ink)
                     .focused($logFocused)
                     .onSubmit {
@@ -199,7 +199,7 @@ struct DetailPanel: View {
                         .overlay(Capsule().strokeBorder(Color.slateBody, lineWidth: 1))
 
                     Text(l.url)
-                        .font(.system(size: 12))
+                        .font(Typo.body(12))
                         .foregroundStyle(Color.mist)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -210,7 +210,7 @@ struct DetailPanel: View {
                         store.removeLink(c.id, l.id)
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 8))
+                            .font(Typo.body(8))
                             .foregroundStyle(Color.fog)
                     }
                     .buttonStyle(.plain)
@@ -221,7 +221,7 @@ struct DetailPanel: View {
                 store.addLink(c.id, Link(type: .url, url: "https://"))
             } label: {
                 Text(store.t.addLink)
-                    .font(.system(size: 12))
+                    .font(Typo.body(12))
                     .foregroundStyle(Color.mist)
             }
             .buttonStyle(.plain)
@@ -266,7 +266,7 @@ struct NewCaseForm: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(store.t.newCase)
-                        .font(.system(size: 26, weight: .light))
+                        .font(Typo.body(26, .light))
                         .foregroundStyle(Color.ink)
                     Text(canGoBack
                          ? "作成すると、この案件が左側に気泡として現れます。"
@@ -281,7 +281,7 @@ struct NewCaseForm: View {
                         store.mode = .detail
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 10))
+                            .font(Typo.body(10))
                             .foregroundStyle(Color.mist)
                             .frame(width: 26, height: 26)
                             .overlay(Circle().strokeBorder(Color.slateBody, lineWidth: 1))
@@ -302,7 +302,7 @@ struct NewCaseForm: View {
                 Spacer()
                 Button(action: submit) {
                     Text(store.t.create)
-                        .font(.system(size: 13))
+                        .font(Typo.body(13))
                         .foregroundStyle(Color.ink)
                         .padding(.horizontal, 22)
                         .padding(.vertical, 9)
@@ -323,7 +323,7 @@ struct NewCaseForm: View {
             Text(label).metaStyle(10)
             TextField(ph, text: text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13))
+                .font(Typo.body(13))
                 .foregroundStyle(Color.ink)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)

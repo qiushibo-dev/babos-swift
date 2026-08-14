@@ -17,7 +17,7 @@ struct ScreenSaver: View {
 
             VStack(spacing: 4) {
                 Text(now.formatted(.dateTime.hour().minute()))
-                    .font(.system(size: 15, design: .monospaced))
+                    .font(Typo.mono(15))
                     .foregroundStyle(Color.mist)
                 Text("\(store.aliveCount)\(store.t.saverCases)")
                     .metaStyle(10)
