@@ -192,6 +192,8 @@ final class Store {
 
     /// 完成確認待ち。10 に到達したら即完了にはせず、必ず一度訊く
     var pendingFinish: Case?
+    /// 削除確認待ち。**唯一の不可逆操作なので必ず一度訊く**
+    var pendingDelete: Case?
     /// 完了アニメーション中。物理は位置を凍結し、画面のキーフレームに任せる
     var finishing: Set<String> = []
 

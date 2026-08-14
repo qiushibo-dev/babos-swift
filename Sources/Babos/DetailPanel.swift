@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// 右上的詳細卡片。未選取時顯示「最後更新的案件」，
 /// 所以這個 View 幾乎不會是空的。
@@ -226,11 +227,34 @@ struct DetailPanel: View {
                         .padding(.vertical, 3)
                         .overlay(Capsule().strokeBorder(Color.slateBody, lineWidth: 1))
 
-                    Text(l.url)
-                        .font(Typo.body(12))
-                        .foregroundStyle(Color.mist)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+                    // 押したら開く。file:// もそのまま通る
+
+
+                    Button {
+
+
+                        if let u = URL(string: l.url) { NSWorkspace.shared.open(u) }
+
+
+                    } label: {
+
+
+                        Text(l.url)
+                            .font(Typo.body(12))
+                            .foregroundStyle(Color.mist)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+
+
+                            .underline(false)
+
+
+                    }
+
+
+                    .buttonStyle(.plain)
+
+
 
                     Spacer()
 
@@ -262,7 +286,8 @@ struct DetailPanel: View {
         HStack {
             Spacer()
             Button {
-                store.delete(c.id)
+                // 直接消さず一度訊く
+                store.pendingDelete = c
             } label: {
                 Text(store.t.deleteCase)
                     .metaStyle(10)

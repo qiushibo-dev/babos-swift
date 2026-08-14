@@ -41,6 +41,26 @@ struct ContentView: View {
         .sheet(isPresented: $settingsOpen) { SettingsSheet(store: store) }
         .sheet(item: $store.detailModal) { c in CaseDetailSheet(store: store, caseID: c.id) }
         .sheet(item: $store.addLinkSheet) { c in AddLinkSheet(store: store, caseID: c.id) }
+        // 削除は唯一の不可逆操作。必ず一度訊く
+
+        .alert(store.pendingDelete.map { store.t.confirmDelete($0.name) } ?? "",
+
+               isPresented: .init(get: { store.pendingDelete != nil },
+
+                                  set: { if !$0 { store.pendingDelete = nil } })) {
+
+            Button(store.t.cancel, role: .cancel) { store.pendingDelete = nil }
+
+            Button(store.t.deleteCase, role: .destructive) {
+
+                if let c = store.pendingDelete { store.delete(c.id) }
+
+                store.pendingDelete = nil
+
+            }
+
+        }
+
         // 10 に到達しても即完了にはしない。必ず一度訊く
         .alert(store.pendingFinish.map { store.t.confirmFinish($0.name) } ?? "",
                isPresented: .init(get: { store.pendingFinish != nil },
