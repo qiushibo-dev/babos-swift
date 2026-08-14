@@ -72,6 +72,8 @@ struct SettingsSheet: View {
         }
     }
 
+    /// **各ボタンを等分に伸ばす。** 文字幅なりに置くと、
+    /// 言語（3つ・長い）と配色（2つ・短い）で右端が揃わない。
     private func segmented<T: Hashable & Identifiable>(
         _ items: [T], current: T,
         _ tap: @escaping (T) -> Void,
@@ -83,35 +85,30 @@ struct SettingsSheet: View {
                     Text(label(item))
                         .font(.system(size: 12))
                         .foregroundStyle(item == current ? Color.onAccent : Color.mist)
-                        .padding(.horizontal, 14)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity)
                         .padding(.vertical, 7)
                         .background(Capsule().fill(item == current ? Color.signalBlue : .clear))
                         .overlay(Capsule().strokeBorder(
                             item == current ? .clear : Color.slateBody, lineWidth: 1))
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
         }
     }
 
+    /// 0〜15 分の連続値。固定の3択ではなく、好きな長さに置けるように。
     private var saverPicker: some View {
-        HStack(spacing: 8) {
-            ForEach([0, 5, 15], id: \.self) { m in
-                Button {
-                    store.saverMinutes = m
-                    store.scheduleSave()
-                } label: {
-                    Text(m == 0 ? t.ssOff : "\(m)\(t.minUnit)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(store.saverMinutes == m ? Color.onAccent : Color.mist)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 7)
-                        .background(Capsule().fill(store.saverMinutes == m ? Color.signalBlue : .clear))
-                        .overlay(Capsule().strokeBorder(
-                            store.saverMinutes == m ? .clear : Color.slateBody, lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-            }
+        HStack(spacing: 14) {
+            MinuteSlider(minutes: Binding(
+                get: { store.saverMinutes },
+                set: { store.saverMinutes = $0; store.scheduleSave() }))
+
+            Text(store.saverMinutes == 0 ? t.ssOff : "\(store.saverMinutes)\(t.minUnit)")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(Color.mist)
+                .frame(width: 56, alignment: .trailing)
         }
     }
 
@@ -305,6 +302,49 @@ struct CaseDetailSheet: View {
         .frame(width: 760)
         .background(Color.midnightInk)
         .onAppear { memo = item?.memo ?? "" }
+    }
+}
+
+// MARK: - 分のスライダー
+
+/// 0〜15 分。macOS 純正の Slider は見た目が浮くので自前で描く。
+/// 掴んで動かすほか、軌道のどこかを押せばそこへ飛ぶ。
+struct MinuteSlider: View {
+    @Binding var minutes: Int
+    private let maxMinutes = 15
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let ratio = Double(minutes) / Double(maxMinutes)
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.slateBody.opacity(0.45))
+                    .frame(height: 4)
+
+                Capsule()
+                    .fill(Color.signalBlue)
+                    .frame(width: max(0, w * ratio), height: 4)
+
+                Circle()
+                    .fill(Color.ink)
+                    .frame(width: 14, height: 14)
+                    .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+                    // 端でつまみが軌道からはみ出さないよう半径ぶん内側に寄せる
+                    .offset(x: (w - 14) * ratio)
+            }
+            .frame(height: 20)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { g in
+                        let r = max(0, min(1, g.location.x / w))
+                        minutes = Int((r * Double(maxMinutes)).rounded())
+                    }
+            )
+        }
+        .frame(height: 20)
     }
 }
 
