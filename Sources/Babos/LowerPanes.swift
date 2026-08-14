@@ -229,9 +229,14 @@ struct CaseList: View {
         // 背景に animation を掛けると、選択色やスクロール時の再生成にも
         // 巻き込まれて色が遅れて追いかけてくる。
         .overlay {
+            let lit = c.id == store.lastTouched
             Color.arcCyan
-                .opacity(c.id == store.lastTouched ? 0.20 : 0)
-                .animation(.easeOut(duration: 0.9), value: c.id == store.lastTouched)
+                .opacity(lit ? 0.20 : 0)
+                // **点く側はアニメーションしない。**
+                // 書き換えると並べ替えで行が一瞬で最上段へ跳ぶのに、
+                // 色だけ 0.9 秒かけて追いつくので動きがずれて見えていた。
+                // 点灯は即時、消えるときだけ余韻を残す。
+                .animation(lit ? nil : .easeOut(duration: 0.9), value: lit)
                 .allowsHitTesting(false)
         }
         .contentShape(Rectangle())
