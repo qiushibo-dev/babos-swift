@@ -2,76 +2,202 @@ import SwiftUI
 
 @main
 struct BabosApp: App {
+    @State private var store = Store.demo()
+
     var body: some Scene {
         WindowGroup("Babos") {
-            ContentView()
-                .frame(minWidth: 900, minHeight: 600)
+            ContentView(store: store)
+                .frame(minWidth: 1080, minHeight: 640)
+                .preferredColorScheme(.dark)
         }
         .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1440, height: 900)
     }
 }
 
 struct ContentView: View {
-    /// 第一階段用假資料，先驗證物理與質感。
-    /// 讀寫 work-tracker.json 是下一步。
-    @State private var cases: [Case] = [
-        .init(id: "1",  name: "Acme LP リニューアル", type: "LP",       client: "Acme",   step: 6),
-        .init(id: "2",  name: "採用パンフレット",     type: "Print",    client: "Acme",   step: 3),
-        .init(id: "3",  name: "LinkedIn 広告 8月分",  type: "LinkedIn", client: "Bridge", step: 9),
-        .init(id: "4",  name: "ブランドガイドライン", type: "Brand",    client: "Bridge", step: 5),
-        .init(id: "5",  name: "展示会バナー",         type: "Banner",   client: "Corvus", step: 2),
-        .init(id: "6",  name: "サービス紹介動画",     type: "Video",    client: "Corvus", step: 8),
-        .init(id: "7",  name: "ロゴリファイン",       type: "Logo",     client: "Delta",  step: 4),
-        .init(id: "8",  name: "パッケージ改訂",       type: "Package",  client: "Delta",  step: 7),
-        .init(id: "9",  name: "メールテンプレート",   type: "Email",    client: "Acme",   step: 1),
-        .init(id: "10", name: "月次レポート表紙",     type: "Print",    client: "Bridge", step: 10),
-    ]
-    @State private var selectedID: String?
+    @Bindable var store: Store
+    @State private var newCaseSheet = false
 
     var body: some View {
         VStack(spacing: 0) {
-            BubbleField(cases: cases, selectedID: $selectedID)
+            TopBar(store: store, newCaseSheet: $newCaseSheet)
+            Divider().overlay(Color.hairline)
 
-            // 進度節點。點下去左邊的氣泡要立刻改變大小與濃淡——
-            // 這是操作不是顯示，本家 SPEC 特別強調過
-            if let id = selectedID,
-               let i = cases.firstIndex(where: { $0.id == id }) {
-                stepper(for: i)
+            // 上半：気泡区（可変）｜詳細（固定幅）
+            HStack(spacing: 0) {
+                BubbleField(cases: store.bubbleCases, selectedID: $store.selectedID)
+                    .frame(maxWidth: .infinity)
+
+                Divider().overlay(Color.hairline)
+
+                DetailPanel(store: store)
+                    .frame(width: 470)
             }
+            .frame(height: 520)
+
+            Divider().overlay(Color.hairline)
+
+            // 下半：サイドバー（固定幅）｜一覧
+            HStack(spacing: 0) {
+                Sidebar(store: store)
+                    .frame(width: 220)
+
+                Divider().overlay(Color.hairline)
+
+                CaseList(store: store)
+                    .frame(maxWidth: .infinity)
+            }
+            .frame(maxHeight: .infinity)
         }
         .background(Color.midnightInk)
-        .preferredColorScheme(.dark)
+        .sheet(isPresented: $newCaseSheet) {
+            NewCaseSheet(store: store, presented: $newCaseSheet)
+        }
     }
+}
 
-    private func stepper(for i: Int) -> some View {
-        HStack(spacing: 14) {
-            Text(cases[i].name)
-                .font(.system(size: 15, weight: .light))
+// MARK: - 上部バー
+
+struct TopBar: View {
+    @Bindable var store: Store
+    @Binding var newCaseSheet: Bool
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: "gearshape")
+                .font(.system(size: 15))
+                .foregroundStyle(Color.mist)
+
+            TextField("案件を検索…", text: $store.query)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
                 .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Capsule().strokeBorder(Color.slateBody, lineWidth: 1))
+                .frame(width: 320)
 
             Spacer()
 
-            HStack(spacing: 6) {
-                ForEach(1...10, id: \.self) { n in
-                    Button {
-                        // 再點一次目前的節點就退回上一格
-                        cases[i].step = (cases[i].step == n) ? n - 1 : n
-                    } label: {
-                        Circle()
-                            .fill(n <= cases[i].step ? Color.arcCyan.opacity(0.9)
-                                                     : Color.white.opacity(0.12))
-                            .frame(width: 14, height: 14)
-                    }
-                    .buttonStyle(.plain)
-                }
+            Button {
+                newCaseSheet = true
+            } label: {
+                Text("＋ 新規案件")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 9)
+                    .background(Capsule().fill(Color.signalBlue))
             }
-
-            Text("\(cases[i].step) / 10")
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.5))
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 18)
-        .background(Color.black.opacity(0.25))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+    }
+}
+
+// MARK: - 新規案件
+
+struct NewCaseSheet: View {
+    @Bindable var store: Store
+    @Binding var presented: Bool
+
+    @State private var name = ""
+    @State private var type = ""
+    @State private var client = ""
+    @FocusState private var nameFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("新規案件")
+                .font(.system(size: 20, weight: .light))
+                .foregroundStyle(.white)
+
+            field("案件名", "例：A社 LP", $name).focused($nameFocused)
+            field("案件タイプ", "例：LinkedIn ／ 印刷物", $type)
+            field("クライアント", "例：A社 ／ 社内", $client)
+
+            HStack {
+                Text("Enter で作成").metaStyle(10)
+                Spacer()
+                Button("キャンセル") { presented = false }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.mist)
+                Button {
+                    submit()
+                } label: {
+                    Text("作成")
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(Color.signalBlue))
+                }
+                .buttonStyle(.plain)
+            }
+            .font(.system(size: 12))
+        }
+        .padding(28)
+        .frame(width: 420)
+        .background(Color.midnightInk)
+        .onAppear { nameFocused = true }
+    }
+
+    private func field(_ label: String, _ ph: String, _ text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).metaStyle(10)
+            TextField(ph, text: text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .background(Capsule().strokeBorder(Color.slateBody, lineWidth: 1))
+                .onSubmit { submit() }
+        }
+    }
+
+    private func submit() {
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        store.create(name: name, type: type, client: client)
+        presented = false
+    }
+}
+
+// MARK: - デモデータ
+
+extension Store {
+    /// 保存はまだ実装していないので、起動ごとにこれが入る。
+    /// work-tracker.json の読み書きは次の段階。
+    static func demo() -> Store {
+        let s = Store()
+        let rows: [(String, String, String, Int, Int)] = [
+            ("Acme LP リニューアル", "LP", "Acme", 6, 4),
+            ("採用パンフレット", "Print", "Acme", 3, 3),
+            ("LinkedIn 広告 8月分", "LinkedIn", "Bridge", 9, 2),
+            ("ブランドガイドライン", "Brand", "Bridge", 5, 5),
+            ("展示会バナー", "Banner", "Corvus", 2, 1),
+            ("サービス紹介動画", "Video", "Corvus", 8, 3),
+            ("ロゴリファイン", "Logo", "Delta", 4, 4),
+            ("パッケージ改訂", "Package", "Delta", 7, 2),
+            ("メールテンプレート", "Email", "Acme", 1, 1),
+            ("月次レポート表紙", "Print", "Bridge", 10, 0),
+        ]
+        s.cases = rows.enumerated().map { i, r in
+            var c = Case(name: r.0, type: r.1, client: r.2, step: r.3)
+            c.priority = r.4
+            c.created = .now.addingTimeInterval(Double(-(i + 3) * 86_400))
+            c.updated = .now.addingTimeInterval(Double(-i * 5_400))
+            c.waiting = (i == 8)
+            if i < 4 {
+                c.logs = [LogEntry(ts: .now.addingTimeInterval(Double(-i * 7_200)),
+                                   text: "初稿を共有、フィードバック待ち")]
+            }
+            if i < 3 {
+                c.links = [Link(type: .figma, url: "https://figma.com/file/demo")]
+            }
+            return c
+        }
+        return s
     }
 }
