@@ -270,6 +270,10 @@ struct CaseDetailSheet: View {
                             }
                             .padding(10)
                         }
+                        // **内側にも要る。** 外の VStack だけ広げても、
+                        // ScrollView 自体は中身の幅しか主張しないので
+                        // 枠線が左に縮こまったままになる。
+                        .frame(maxWidth: .infinity)
                         .overlay(RoundedRectangle(cornerRadius: 8)
                             .strokeBorder(Color.slateBody, lineWidth: 1))
                     }

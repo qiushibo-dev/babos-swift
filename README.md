@@ -1,68 +1,107 @@
 # Babos (Swift)
 
-[Babos](https://github.com/qiushibo-dev/work-log) 的 SwiftUI 重寫版。**實驗中，不是替代品**——
-HTML／Tauri 那版還在用，這邊做壞了沒有損失。
+[Babos](https://github.com/qiushibo-dev/work-log) の SwiftUI 版。個人用の作業記録アプリ。
 
-## 為什麼重寫
+**一つの案件が一つの気泡。** 大きさは「その案件が今どれだけ頭を占めているか」、
+濃さは「どこまで進んだか」。二つは独立していて、同じ方向には動かない。
 
-原版是單一 HTML 檔用 Tauri 包成 app。Tauri 不帶瀏覽器，借系統的引擎——
-macOS 借 Safari 的、Windows 借 Edge 的。**所以同一份程式在兩個系統上行為不一樣**，
-而開發時在 Chrome 裡測，那又是第三種。
+macOS 専用（Apple Silicon）。
 
-這造成的實際損失：`setFullscreen` 連續三次讓 app 閃退、CSS 一改就崩、
-字體到底有沒有生效無法驗證（release build 沒有 devtools）。
-全部都不是程式寫錯，是那個架構的代價。
+---
 
-換成原生之後：沒有 WebView，沒有引擎差異，狀態可以直接印出來看。
-代價是 **Windows 版沒有了**。
+## 二つの版の関係
 
-## 現在做到哪
+| | [HTML / Tauri 版](https://github.com/qiushibo-dev/work-log) | この Swift 版 |
+|---|---|---|
+| 位置づけ | **試験場** | **本命** |
+| 対応 | macOS ＋ Windows | macOS のみ |
+| 中身 | 単一 HTML を Tauri で包む | SwiftUI ネイティブ |
 
-**第一階段（能跑）**
+**新しい機能はまず HTML 版で試し、使えると分かってからこちらへ移す。**
+あちらのほうが手数が少なく壊しても軽いので、思いつきを試すのに向いている。
 
-- 氣泡的物理：碰撞推擠、中心力、邊界反彈、微幅晃動、拖曳與放手後的慣性
-- 大小與深淺的兩條公式，數值原封不動搬過來
-- 點選氣泡 → 下方出現 1–10 進度節點，點下去氣泡即時改變
+データは別々（`com.shihbo.worklog` と `com.shihbo.babos-swift`）。
+同じ案件を両方で編集することは想定していない。
 
-**還沒有**
+## なぜ書き直したか
 
-- 字體（現在是系統預設，原版是 Inter + Noto Sans JP/TC）
-- 下半部的列表與側欄篩選
-- 右側詳細卡片（工作日誌、連結、備註）
-- 資料儲存（現在寫死假資料，還沒讀 `work-tracker.json`）
-- 三語系、兩種配色、螢幕保護、完成動畫
+Tauri はブラウザを同梱せず OS のエンジンを借りる——macOS は Safari、
+Windows は Edge の。**つまり同じコードが二つの OS で違う挙動をする**うえ、
+開発中に見ているのは三つ目の Chrome。
 
-## 跑起來
+実際に払った代償：`setFullscreen` で3回連続クラッシュ、CSS を触るたび
+描画が崩れる、フォントが効いているかを release ビルドで確認できない
+（devtools が無い）。どれもコードの誤りではなく、あの構成の代償だった。
+
+ネイティブにすればエンジンの差は消え、状態を端末へ出して確かめられる。
+**引き換えに Windows 版は無くなる。**
+
+## 動かす
 
 ```bash
-./build.sh          # 編譯 → 組成 .app → 開起來
-./build.sh --norun  # 只編譯打包
+./build.sh          # ビルド → .app を組む → 起動
+./build.sh --norun  # 組むだけ
 ```
 
-需要 Swift 6 與 macOS SDK，**不需要完整的 Xcode**（command line tools 就夠）。
+Swift 6 と macOS SDK が要る。**完全な Xcode は不要**（command line tools で足りる）。
 
-### 建置產物刻意放在 `~/.cache`
+### 生成物を `~/.cache` に置いている理由
 
-這個專案在 `~/Desktop`，而桌面在 iCloud 的 File Provider 管理下。
-生成物留在那裡的話，剛做好的 `.app` 會被同步機制加上 `com.apple.FinderInfo`，
-codesign 直接拒絕簽章。原版為了這件事被卡了三次才查出根因。
+このリポジトリは `~/Desktop` にあり、Desktop は iCloud の File Provider の
+管理下にある。生成物をそこに置くと、出来たての `.app` に
+`com.apple.FinderInfo` が付けられ、codesign が拒否する。
+HTML 版はこれで三度足を止められた。
 
-## 檔案
+## 同梱しているもの
 
-| 檔案 | 內容 |
+| フォント | サイズ | 用途 |
+|---|---|---|
+| Inter（可変） | 856KB | 欧文の本文・見出し |
+| IBM Plex Mono | 132KB | 小さいラベルと数字 |
+| Noto Sans JP（可変） | 9.1MB | 和文 |
+| Noto Sans TC（可変） | 11MB | 中文 |
+
+`Contents/Resources/Fonts` に置き、Info.plist の `ATSApplicationFontsPath` で指す。
+macOS が起動時に登録するので `CTFontManager` を叩く必要はない。
+
+**`Font.custom` は1書体しか受け取らない。** Inter だけ指定すると和文は
+システム任せ（Hiragino）に落ちるので、CoreText のカスケードリストで
+Inter → Noto Sans JP → Noto Sans TC の順に繋いでいる（`Typo.cascaded`）。
+
+## データ
+
+```
+~/Library/Application Support/com.shihbo.babos-swift/data.json
+```
+
+Codable ＋ ISO8601。400ms のデバウンスで書き、`.atomic` で置き換える。
+**起動時に一度書く**——「変更するまで書き込みを試さない」だと、権限や
+パスの問題が後になって発覚するため。書き込み状態は設定画面に出る
+（成功なら実パス、失敗なら赤字）。
+
+## 触ってはいけないところ
+
+- **気泡にリング・枠線・パーセント表示を足さない。** 大きさと濃さの二軸で足りている
+- **濃さは進捗とともに濃くなる。** 逆にすると「始めたばかり」と「もうすぐ終わる」が
+  画面上で同じに見える
+- **未選択時は「最終更新の案件」を出す。**「気泡をクリックしてください」型の
+  空状態は却下済み
+- 儀式的な演出は完了アニメーションだけ。他は静かに保つ
+
+判断の経緯と却下した案は HTML 版の `SPEC.md` にある。
+
+## 構成
+
+| ファイル | 中身 |
 |---|---|
-| `Sources/Babos/Model.swift` | 案件資料結構、**兩條編碼公式**、配色 |
-| `Sources/Babos/Field.swift` | 每幀解算的物理場 |
-| `Sources/Babos/BubbleField.swift` | 氣泡的畫面與手勢 |
-| `Sources/Babos/BabosApp.swift` | 進入點與暫時的假資料 |
-
-## 不要動的地方
-
-氣泡的兩個編碼互相獨立，這是整個 app 的核心：
-
-- **大小** ＝ 這件案子現在佔掉多少腦袋。走常態曲線（小 → 大 → 小），
-  因為設計最耗神的是中段，收尾剩下的多半是機械性動作
-- **深淺** ＝ 已經走了多遠。單調遞增
-
-兩者不能同方向衰減，否則「剛開始」與「快結束」在畫面上會長得一樣。
-完整的決策紀錄（以及被否決的方案）在原版的 `SPEC.md`。
+| `Model.swift` | 案件の型、**二つの編碼式**、配色 |
+| `Store.swift` | 状態と操作。画面はこれ経由でしか書き換えない |
+| `Field.swift` | 毎フレーム解く物理 |
+| `BubbleField.swift` | 気泡の描画と手勢、完了アニメーション |
+| `DetailPanel.swift` | 右上のカード、新規案件フォーム |
+| `LowerPanes.swift` | サイドバーと一覧 |
+| `Sheets.swift` | 設定、完全表示、スライダー |
+| `InlineEdit.swift` | その場編集、リンク追加 |
+| `Typography.swift` | 書体とフォールバック |
+| `Persistence.swift` | 保存と読み込み |
+| `ScreenSaver.swift` | 無操作時の画面 |
