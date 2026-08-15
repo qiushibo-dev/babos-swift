@@ -189,40 +189,4 @@ struct TopBar: View {
     }
 }
 
-// MARK: - デモデータ
-
-extension Store {
-    /// 保存はまだ実装していないので、起動ごとにこれが入る。
-    /// work-tracker.json の読み書きは次の段階。
-    static func demo() -> Store {
-        let s = Store()
-        let rows: [(String, String, String, Int, Int)] = [
-            ("Acme LP リニューアル", "LP", "Acme", 6, 4),
-            ("採用パンフレット", "Print", "Acme", 3, 3),
-            ("LinkedIn 広告 8月分", "LinkedIn", "Bridge", 9, 2),
-            ("ブランドガイドライン", "Brand", "Bridge", 5, 5),
-            ("展示会バナー", "Banner", "Corvus", 2, 1),
-            ("サービス紹介動画", "Video", "Corvus", 8, 3),
-            ("ロゴリファイン", "Logo", "Delta", 4, 4),
-            ("パッケージ改訂", "Package", "Delta", 7, 2),
-            ("メールテンプレート", "Email", "Acme", 1, 1),
-            ("月次レポート表紙", "Print", "Bridge", 10, 0),
-        ]
-        s.cases = rows.enumerated().map { i, r in
-            var c = Case(name: r.0, type: r.1, client: r.2, step: r.3)
-            c.priority = r.4
-            c.created = .now.addingTimeInterval(Double(-(i + 3) * 86_400))
-            c.updated = .now.addingTimeInterval(Double(-i * 5_400))
-            c.waiting = (i == 8)
-            if i < 4 {
-                c.logs = [LogEntry(ts: .now.addingTimeInterval(Double(-i * 7_200)),
-                                   text: "初稿を共有、フィードバック待ち")]
-            }
-            if i < 3 {
-                c.links = [Link(type: .figma, url: "https://figma.com/file/demo")]
-            }
-            return c
-        }
-        return s
-    }
-}
+// MARK: - デモデータは Persistence.swift の samples() に統合済み

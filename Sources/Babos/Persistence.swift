@@ -32,6 +32,26 @@ enum FileState: Equatable {
 
 extension Store {
 
+    // MARK: 初回のサンプル
+
+    /// 初回起動時に入る5件。HTML 版と同じ内容。
+    ///
+    /// **全て step 0（＝最小サイズ・最も淡い状態）にしてある。**
+    /// 進捗をばらけさせると開いた瞬間は綺麗だが、その大きさが
+    /// どこから来たのかユーザーには分からない。全部同じなら、
+    /// 最初の進捗ノードを押した瞬間に「気泡が育って濃くなる」のを
+    /// 自分の操作で目撃できる。ルールの説明が要らなくなる。
+    static func samples() -> [Case] {
+        let base = Date.now
+        return ["A", "B", "C", "D", "E"].enumerated().map { i, k in
+            var c = Case(name: "Project \(k)")
+            c.id = "sample-\(k)"
+            c.created = base.addingTimeInterval(Double(-i * 60))
+            c.updated = c.created
+            return c
+        }
+    }
+
     // MARK: 位置
 
     /// `~/Library/Application Support/com.shihbo.babos-swift/data.json`
@@ -54,10 +74,12 @@ extension Store {
         do {
             let url = try Self.dataURL()
             guard FileManager.default.fileExists(atPath: url.path) else {
-                // 初回起動。ファイルが無いのは異常ではないが、
-                // **ここで一度書いておく**——書けるかどうかを起動時に確かめたい。
+                // 初回起動。サンプルを入れてから一度書く。
+                //
+                // **書くのは「書けるか」をここで確かめたいから。**
                 // 「何か変更するまで書き込みを試さない」と、権限やパスの問題が
                 // ずっと後になって発覚する（HTML 版がまさにそれだった）。
+                cases = Self.samples()
                 saveNow()
                 return
             }
