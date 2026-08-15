@@ -198,6 +198,9 @@ final class Store {
     /// 直近に書き換えた案件。**どの並び順でも一覧の先頭に固定する。**
     /// 次に別の案件を書き換えるまで居座る（＝すぐ元の位置へ戻らない）。
     var lastTouched: String?
+    /// 更新確認の状態
+    var updateState: UpdateState = .idle
+
     /// 光らせる対象。こちらは 1.5 秒で消える。
     /// 固定と別にしないと、光が消えた瞬間に行が元の位置へ跳ぶ。
     var flashID: String?

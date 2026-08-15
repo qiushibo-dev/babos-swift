@@ -38,6 +38,8 @@ struct L: Sendable {
     var tagManagement, about, tagHint, tagAdd, phTag, noTags: String
     var storageFailed, storagePending, storageLocal: String
     var version, author, storage: String
+    var checkUpdate, verChecking, verLatest, verFailed: String
+    var verNew: @Sendable (String) -> String
     var linkType, linkPath, phUrl, addLinkTitle: String
     // クロージャは @Sendable でないと L 全体が Sendable にならず、
     // static let で持てない（Swift 6 の並行性チェック）
@@ -82,6 +84,8 @@ struct L: Sendable {
         tagAdd: "Add", phTag: "New tag…", noTags: "No tags yet.",
         storageFailed: "File write failed", storagePending: "Not written yet",
         storageLocal: "Memory only", version: "Version", author: "Built by", storage: "Storage",
+        checkUpdate: "Check", verChecking: "Checking…", verLatest: "Up to date",
+        verFailed: "Could not check", verNew: { "\($0) is available" },
         linkType: "Type", linkPath: "Path or URL", phUrl: "https://…  or  file:///Users/…",
         addLinkTitle: "Add link",
         confirmFinish: { "Mark “\($0)” as done?" },
@@ -117,6 +121,8 @@ struct L: Sendable {
         tagAdd: "追加", phTag: "新しいタグ…", noTags: "まだタグがありません。",
         storageFailed: "ファイル書き込み失敗", storagePending: "まだ書き込まれていません",
         storageLocal: "メモリのみ", version: "バージョン", author: "制作", storage: "保存先",
+        checkUpdate: "確認", verChecking: "確認中…", verLatest: "最新です",
+        verFailed: "確認できませんでした", verNew: { "\($0) が出ています" },
         linkType: "種類", linkPath: "パス ／ URL", phUrl: "https://… または file:///Users/…",
         addLinkTitle: "リンクを追加",
         confirmFinish: { "「\($0)」を完了にしますか？" },
@@ -152,6 +158,8 @@ struct L: Sendable {
         tagAdd: "新增", phTag: "新標籤…", noTags: "還沒有標籤。",
         storageFailed: "檔案寫入失敗", storagePending: "尚未寫入",
         storageLocal: "只在記憶體裡", version: "版本", author: "製作", storage: "資料儲存位置",
+        checkUpdate: "檢查", verChecking: "檢查中…", verLatest: "已是最新",
+        verFailed: "無法檢查", verNew: { "有新版 \($0)" },
         linkType: "類型", linkPath: "路徑或網址", phUrl: "https://… 或 file:///Users/…",
         addLinkTitle: "新增連結",
         confirmFinish: { "要把「\($0)」標記為完成嗎？" },

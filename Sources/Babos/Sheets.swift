@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 // MARK: - 設定
 
@@ -170,7 +171,27 @@ struct SettingsSheet: View {
     /// 見えないところで失敗させないこと（HTML 版の教訓）。
     private var about: some View {
         VStack(alignment: .leading, spacing: 8) {
-            row(t.version, "0.0.1")
+            // 版本の行に更新確認を並べる
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(t.version).metaStyle(10).frame(width: 110, alignment: .leading)
+                Text(store.appVersion)
+                    .font(Typo.body(12))
+                    .foregroundStyle(Color.mist)
+
+                Button { Task { await store.checkUpdate() } } label: {
+                    Text(t.checkUpdate)
+                        .metaStyle(9)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 2)
+                        .overlay(Capsule().strokeBorder(Color.slateBody, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .disabled(store.updateState == .checking)
+
+                updateResult
+                Spacer(minLength: 0)
+            }
+
             row(t.author, "Shih-Bo Chiu")
 
             HStack(alignment: .top) {
@@ -201,6 +222,35 @@ struct SettingsSheet: View {
         HStack {
             Text(k).metaStyle(10).frame(width: 110, alignment: .leading)
             Text(v).font(Typo.body(12)).foregroundStyle(Color.mist)
+        }
+    }
+
+    /// 確認の結果。**失敗も必ず出す**——黙って何も起きないのが一番困る
+    @ViewBuilder
+    private var updateResult: some View {
+        switch store.updateState {
+        case .idle:
+            EmptyView()
+        case .checking:
+            Text(t.verChecking).font(Typo.body(11)).foregroundStyle(Color.fog)
+        case .latest:
+            Text(t.verLatest).font(Typo.body(11)).foregroundStyle(Color.fog)
+        case .available(let tag):
+            VStack(alignment: .leading, spacing: 2) {
+                Text(t.verNew(tag)).font(Typo.body(11)).foregroundStyle(Color.arcCyan)
+                // 押すと Releases を開く
+                Button {
+                    if let u = URL(string: Store.releasesURL) { NSWorkspace.shared.open(u) }
+                } label: {
+                    Text(Store.releasesURL).metaStyle(9)
+                }
+                .buttonStyle(.plain)
+            }
+        case .failed(let msg):
+            VStack(alignment: .leading, spacing: 2) {
+                Text(t.verFailed).font(Typo.body(11)).foregroundStyle(.red)
+                Text(msg).metaStyle(9)
+            }
         }
     }
 }
