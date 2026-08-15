@@ -230,8 +230,12 @@ struct CaseDetailSheet: View {
                     .padding(.top, 6)
                     .padding(.bottom, 20)
 
+                // **等分は VStack 側に掛ける。**
+                // 中の TextEditor / ScrollView に maxWidth を付けても効かない——
+                // HStack が幅を配るときに見るのは VStack の固有幅で、
+                // 左は TextEditor（無限に伸びたがる）、右は「No entries yet.」の
+                // 一行ぶんしか主張しないため、左に全部持っていかれる。
                 HStack(alignment: .top, spacing: 20) {
-                    // 左右を等分に。TextEditor は放っておくと横へ伸びてログ側を潰す
                     VStack(alignment: .leading, spacing: 8) {
                         Text(t.notes).metaStyle(10)
                         TextEditor(text: $memo)
@@ -241,8 +245,8 @@ struct CaseDetailSheet: View {
                             .padding(10)
                             .overlay(RoundedRectangle(cornerRadius: 8)
                                 .strokeBorder(Color.slateBody, lineWidth: 1))
-                        .frame(maxWidth: .infinity)
                     }
+                    .frame(maxWidth: .infinity)
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text(t.fullLog).metaStyle(10)
@@ -268,8 +272,8 @@ struct CaseDetailSheet: View {
                         }
                         .overlay(RoundedRectangle(cornerRadius: 8)
                             .strokeBorder(Color.slateBody, lineWidth: 1))
-                        .frame(maxWidth: .infinity)
                     }
+                    .frame(maxWidth: .infinity)
                 }
                 .frame(height: 300)
 
