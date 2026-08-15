@@ -34,6 +34,8 @@ struct ContentView: View {
         .id(store.theme)
         .onAppear {
             store.load()
+
+            store.watchTermination()
             idle.limit = store.saverMinutes
             idle.start()
         }

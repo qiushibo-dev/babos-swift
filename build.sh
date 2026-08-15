@@ -28,6 +28,9 @@ cp "$BIN" "$APP/Contents/MacOS/Babos"
 # 起動時に macOS が勝手に登録してくれる（自前で CTFontManager を叩く必要はない）。
 cp Resources/Fonts/*.ttf "$APP/Contents/Resources/Fonts/"
 
+# アイコン。HTML 版と同じものを使う
+cp Resources/AppIcon.icns "$APP/Contents/Resources/"
+
 # Info.plist が無いと Dock に出ない、メニューバーも壊れる。
 # LSUIElement を入れないこと（入れると通常のウィンドウアプリにならない）。
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -39,12 +42,13 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleDisplayName</key>       <string>Babos</string>
   <key>CFBundleExecutable</key>        <string>Babos</string>
   <key>CFBundleIdentifier</key>        <string>com.shihbo.babos-swift</string>
-  <key>CFBundleVersion</key>           <string>0.0.1</string>
-  <key>CFBundleShortVersionString</key><string>0.0.1</string>
+  <key>CFBundleVersion</key>           <string>0.1.0</string>
+  <key>CFBundleShortVersionString</key><string>0.1.0</string>
   <key>CFBundlePackageType</key>       <string>APPL</string>
   <key>NSHighResolutionCapable</key>   <true/>
   <key>LSMinimumSystemVersion</key>    <string>14.0</string>
   <key>ATSApplicationFontsPath</key>   <string>Fonts</string>
+  <key>CFBundleIconFile</key>          <string>AppIcon</string>
 </dict>
 </plist>
 PLIST

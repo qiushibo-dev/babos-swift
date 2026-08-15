@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 /// 檔案上的樣子。欄位名跟 HTML 版的 work-tracker.json 對齊，
 /// 之後要互相讀取的話不用轉換。
@@ -94,12 +95,30 @@ extension Store {
     // MARK: 寫
 
     /// 400ms 的 debounce。連續打字時不要每個字都寫檔。
+    ///
+    /// **待機中に終了されると、その分の変更は消える。**
+    /// 対策として `watchTermination()` で終了通知を捕まえ、最後に一度書く。
     func scheduleSave() {
         saveTask?.cancel()
         saveTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))
             guard !Task.isCancelled else { return }
             saveNow()
+        }
+    }
+
+    /// 終了時に取りこぼしを防ぐ。
+    /// 「変更してから 400ms 以内に Cmd+Q」で1回ぶん消えるのは実害があるので、
+    /// 終了通知で強制的に書き切る。
+    func watchTermination() {
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                self.saveTask?.cancel()
+                self.saveNow()
+            }
         }
     }
 

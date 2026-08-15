@@ -280,6 +280,10 @@ final class Store {
     func delete(_ id: String) {
         cases.removeAll { $0.id == id }
         if selectedID == id { selectedID = nil }
+        // 消したものを指したままにしない
+        if lastTouched == id { lastTouched = nil }
+        if flashID == id { flashID = nil }
+        finishing.remove(id)
         scheduleSave()
     }
 
@@ -292,6 +296,14 @@ final class Store {
         if !c.client.isEmpty { addTag(false, c.client) }
         selectedID = c.id
         mode = .detail
+        // **新規も「更新」として扱う。** これが無いと、並び順が
+        // 最終更新以外のときに作った案件が一覧の途中に紛れて見失う
+        lastTouched = c.id
+        flashID = c.id
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.5))
+            if flashID == c.id { flashID = nil }
+        }
         scheduleSave()
         return c
     }

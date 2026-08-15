@@ -10,10 +10,13 @@ struct BubbleField: View {
     /// 拖曳超過 5px 就不算點選，避免拖完順手選到別的案子
     @State private var dragMoved = false
 
-    /// 完了アニメーション中の案件も、抜け終わるまでは描き続ける
+    /// 完了アニメーション中の案件も、抜け終わるまでは描き続ける。
+    /// bubbleCases を1件ごとになめると O(n²) になるので、先に Set にする。
     private var cases: [Case] {
-        store.cases.filter { !$0.done || store.finishing.contains($0.id) }
-            .filter { c in store.bubbleCases.contains { $0.id == c.id } || store.finishing.contains(c.id) }
+        let visible = Set(store.bubbleCases.map(\.id))
+        return store.cases.filter {
+            visible.contains($0.id) || store.finishing.contains($0.id)
+        }
     }
 
     var body: some View {
