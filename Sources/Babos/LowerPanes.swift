@@ -229,7 +229,7 @@ struct CaseList: View {
         // 背景に animation を掛けると、選択色やスクロール時の再生成にも
         // 巻き込まれて色が遅れて追いかけてくる。
         .overlay {
-            let lit = c.id == store.lastTouched
+            let lit = c.id == store.flashID
             Color.arcCyan
                 .opacity(lit ? 0.20 : 0)
                 // **点く側はアニメーションしない。**
@@ -245,12 +245,18 @@ struct CaseList: View {
 
     /// 重要度は列表の点だけ。**気泡の大きさには影響させない**（本家で否決済み）
     private func priorityDots(_ c: Case) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 0) {
             ForEach(1...5, id: \.self) { n in
                 Circle()
                     .fill(n <= c.priority ? Color.mist : .clear)
                     .overlay(Circle().strokeBorder(Color.slateBody, lineWidth: 1))
-                    .frame(width: 6, height: 6)
+                    .frame(width: 8, height: 8)
+                    // **透明な塗りは当たり判定を持たない。**
+                    // まだ点いていない丸（.clear）が押せず、重要度を上げられなかった。
+                    // contentShape で形を与え、余白ぶんまで当たるようにする。
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
                     .onTapGesture { store.setPriority(c.id, n) }
             }
         }

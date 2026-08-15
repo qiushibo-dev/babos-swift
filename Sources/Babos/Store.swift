@@ -80,7 +80,7 @@ final class Store {
             guard matches(c) else { return false }
             return statusFilter == nil ? !c.done : true
         }
-        return base.sorted { a, b in
+        let sorted = base.sorted { a, b in
             let asc = sortAscending
             switch sortKey {
             case .name:    return asc ? a.name < b.name : a.name > b.name
@@ -90,6 +90,15 @@ final class Store {
             case .updated: return asc ? a.updated < b.updated : a.updated > b.updated
             }
         }
+
+        // **直近に書き換えたものは、どの並び順でも先頭に出す。**
+        // 並び替えは「探すため」、先頭固定は「今さわったものを見失わないため」で
+        // 目的が違うので、並びの規則には混ぜずに後から引き上げる。
+        guard let id = lastTouched,
+              let i = sorted.firstIndex(where: { $0.id == id }) else { return sorted }
+        var r = sorted
+        r.insert(r.remove(at: i), at: 0)
+        return r
     }
 
     /// 未選取時顯示「最後更新的案件」。
@@ -125,14 +134,13 @@ final class Store {
         guard let i = cases.firstIndex(where: { $0.id == id }) else { return }
         body(&cases[i])
         cases[i].updated = .now
-        // **単に開いて見ただけは「更新」ではない。**
-        // 書き換えたときだけ日時が動き、一覧で一度光る。
-        // 既定の並びは「最終更新の新しい順」なので、書き換えた案件は
-        // そのまま最上段へ来る（別の列で並べ替えている間は動かない）。
+        // **単に開いて見ただけは「更新」ではない。** 書き換えたときだけ動く。
+        // 何を変えても（進捗・ログ・リンク・重要度・名前・タグ）先頭へ来る。
         lastTouched = id
+        flashID = id
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1.5))
-            if lastTouched == id { lastTouched = nil }
+            if flashID == id { flashID = nil }
         }
         scheduleSave()
     }
@@ -187,8 +195,12 @@ final class Store {
     /// リンク追加のシート
     var addLinkSheet: Case?
 
-    /// 直近に書き換えた案件。一覧で一度だけ光らせる
+    /// 直近に書き換えた案件。**どの並び順でも一覧の先頭に固定する。**
+    /// 次に別の案件を書き換えるまで居座る（＝すぐ元の位置へ戻らない）。
     var lastTouched: String?
+    /// 光らせる対象。こちらは 1.5 秒で消える。
+    /// 固定と別にしないと、光が消えた瞬間に行が元の位置へ跳ぶ。
+    var flashID: String?
 
     /// 完成確認待ち。10 に到達したら即完了にはせず、必ず一度訊く
     var pendingFinish: Case?
