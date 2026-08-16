@@ -10,6 +10,13 @@ struct BubbleField: View {
     /// 拖曳超過 5px 就不算點選，避免拖完順手選到別的案子
     @State private var dragMoved = false
 
+    /// ランプの枠。**飛び先の座標はここからしか出せない。**
+    /// 気泡区と同じ座標系で測るので、`.named(Self.space)` を通す。
+    @State private var lamp = LampBox()
+
+    /// 気泡もランプも同じ座標系で測るための名前
+    private static let space = "babos.bubblefield"
+
     /// 完了アニメーション中の案件も、抜け終わるまでは描き続ける。
     /// bubbleCases を1件ごとになめると O(n²) になるので、先に Set にする。
     private var cases: [Case] {
@@ -33,6 +40,13 @@ struct BubbleField: View {
 
             .overlay(alignment: .top) { chips }
             .overlay(alignment: .bottom) { legend }
+            // **`.coordinateSpace` は overlay より後に置くこと。**
+            // 先に置くと overlay は名前付き座標系の「外」の兄弟になり、
+            // ランプ枠を測った値が窓の原点基準で返る。気泡の `.position` は
+            // 気泡区の原点基準なので、上部バーの高さぶん（約 94pt）だけ
+            // 着地点が下にずれる——横位置だけ合っていて縦が落ちる、という出方をする。
+            .coordinateSpace(name: Self.space)
+            .onPreferenceChange(LampBoxKey.self) { lamp = $0 }
             .background { driver }        // 物理はここで駆動する
             .onChange(of: geo.size, initial: true) { _, new in
                 field.bounds = new
@@ -85,12 +99,68 @@ struct BubbleField: View {
             ForEach([Status.active, .waiting, .near], id: \.self) { s in
                 chip(s, s.label(store.t), store.count(s))
             }
-            Spacer()
+            lamps
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
         .opacity(relaxed ? 0 : 1)
         .allowsHitTesting(!relaxed)
+    }
+
+    // MARK: 一巡のランプ
+
+    /// 右端に寄せた進み具合。**空き枠は描かない。**
+    /// ゲームの HP と同じで、点いたぶんだけ右から左へ伸びていく。
+    ///
+    /// 一段に 20 個ぶんの幅が取れれば一段、無理なら 10 個ずつ二段。
+    /// 入るだけ詰めない理由は `Cycle.perRow` を見ること。
+    private var lamps: some View {
+        GeometryReader { g in
+            let per = Cycle.perRow(width: g.size.width)
+            let inner = Cycle.innerSize(per: per)
+            let on = min(store.cycle.caseIds.count, Cycle.size)
+            let frame = g.frame(in: .named(Self.space))
+
+            VStack(alignment: .trailing, spacing: Cycle.vgap) {
+                ForEach(0..<(Cycle.size / per), id: \.self) { r in
+                    let n = max(0, min(per, on - r * per))
+                    if n > 0 { lampRow(n) }
+                }
+            }
+            .frame(width: inner.width, height: inner.height, alignment: .topTrailing)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+            .animation(.easeOut(duration: 0.28), value: on)
+            // 枠は 0 個のときも同じ寸法で報告する。飛び先をここから測るため
+            .preference(key: LampBoxKey.self, value: LampBox(
+                box: CGRect(x: frame.maxX - inner.width,
+                            y: frame.midY - inner.height / 2,
+                            width: inner.width, height: inner.height),
+                per: per))
+        }
+        // GeometryReader は放っておくと縦にも伸びてチップ列を押し広げる
+        .frame(height: 26)
+    }
+
+    /// **右端から左へ点けていく。** 添字 0 が一番右。
+    /// 左から埋めると、増えるたびに列が右へ伸びていくように見えて落ち着かない。
+    private func lampRow(_ n: Int) -> some View {
+        HStack(spacing: Cycle.gap) {
+            ForEach((0..<n).reversed(), id: \.self) { _ in
+                Circle()
+                    .fill(Color.mist)
+                    .frame(width: Cycle.dot, height: Cycle.dot)
+                    .transition(.scale(scale: 0.2).combined(with: .opacity))
+            }
+        }
+    }
+
+    /// 次に点くランプの中心。まだ枠を測れていなければ nil
+    private func lampPoint(_ n: Int) -> CGPoint? {
+        guard lamp.box != .zero, lamp.per > 0 else { return nil }
+        let i = min(n, Cycle.size - 1)
+        return CGPoint(
+            x: lamp.box.maxX - Double(i % lamp.per) * (Cycle.dot + Cycle.gap) - Cycle.dot / 2,
+            y: lamp.box.minY + Double(i / lamp.per) * (Cycle.dot + Cycle.vgap) + Cycle.dot / 2)
     }
 
     private func chip(_ s: Status?, _ label: String, _ n: Int) -> some View {
@@ -148,6 +218,13 @@ struct BubbleField: View {
         let leaving = store.finishing.contains(c.id)
         let d = b.r * 2
 
+        // 行き先は「次に点くランプ」。飛んでいる間に点は増えないので
+        // （点灯は着地後）、この値は飛行中ずっと同じ。
+        let target = lampPoint(store.cycle.caseIds.count)
+        // 枠がまだ測れていないときだけ、旧来どおり真上へ抜けさせる
+        let dx = target.map { $0.x - b.x } ?? 0
+        let dy = target.map { $0.y - b.y } ?? -340
+
         return Circle()
             .fill(Color.haloViolet.opacity(Encoding.opacity(c.progress)))
             .frame(width: d, height: d)
@@ -167,7 +244,9 @@ struct BubbleField: View {
                         .frame(maxWidth: d * 0.82)
                 }
             }
-            .modifier(FloatAway(active: leaving))
+            .modifier(FlyToLamp(active: leaving, dx: dx, dy: dy,
+                                // 大きい気泡がそのまま点の大きさで着地するように
+                                end: target == nil ? 0.5 : max(0.04, Cycle.dot / max(d, 1))))
             .position(x: b.x, y: b.y)
             .allowsHitTesting(!leaving)
             .gesture(
@@ -190,17 +269,46 @@ struct BubbleField: View {
     }
 }
 
+// MARK: - ランプの枠を上へ渡す
+
+/// 枠は overlay の中にあり、気泡は ZStack の中にある。
+/// 兄弟どうしなので preference で親まで持ち上げるしかない。
+struct LampBox: Equatable, Sendable {
+    var box: CGRect = .zero
+    var per: Int = Cycle.size
+}
+
+struct LampBoxKey: PreferenceKey {
+    static let defaultValue = LampBox()
+    static func reduce(value: inout LampBox, nextValue: () -> LampBox) { value = nextValue() }
+}
+
 // MARK: - 完了アニメーション
 
 /// **この app で唯一、儀式的な演出をしていい場所。** 他はすべて静かに保つ。
 ///
-/// HTML 版の `@keyframes float-away` をそのまま移した：
-/// 0% → 22% でいったん上に 14px 浮いて 1.14 倍に膨らみ（最後の一呼吸）、
-/// そこから -340px まで抜けながら半分に縮んで消える。計 2.1 秒。
-private struct FloatAway: ViewModifier, Animatable {
+/// 気泡は消えるのではなく、右上のランプまで飛んでいってそのまま点になる。
+/// ただ上へ抜けさせていた頃は「消えた」で終わっていて、
+/// 完了した1件がどこへ行ったのかが画面のどこにも残らなかった。
+///
+/// HTML 版の `@keyframes float-away`（1.4 秒）をそのまま移した：
+/// 0% → 18% でいったん上に 16px 浮いて 1.14 倍に膨らみ（最後の一呼吸）、
+/// そこから着地点まで一気に縮んでいく。
+///
+/// **長さは `Cycle.flyDuration` と必ず揃えること。**
+/// ずれると点が先に現れるか、気泡が消えたあとに間が空く。
+private struct FlyToLamp: ViewModifier {
     var active: Bool
+    var dx: Double
+    var dy: Double
+    /// 着地時の縮小率。点と同じ大きさになる値を渡す
+    var end: Double
+
+    /// 1.4 × 0.18、1.4 × 0.82
+    private let lead = 0.252, rest = 1.148
 
     struct Values {
+        var x: Double = 0
         var y: Double = 0
         var scale: Double = 1
         var opacity: Double = 1
@@ -211,22 +319,30 @@ private struct FloatAway: ViewModifier, Animatable {
             initialValue: Values(),
             trigger: active
         ) { view, v in
+            // **順番を入れ替えてはいけない。** `.offset` を内側に書くと、
+            // 外側の `.scaleEffect` が移動量まで一緒に縮める。
+            // 着地時の倍率は 0.07 くらいなので、飛距離もその 7% しか出ず、
+            // 気泡は元の位置のすぐ横で消える。
             view
-                .offset(y: v.y)
                 .scaleEffect(v.scale)
+                .offset(x: v.x, y: v.y)
                 .opacity(v.opacity)
         } keyframes: { _ in
+            KeyframeTrack(\.x) {
+                CubicKeyframe(active ? dx * 0.06 : 0, duration: lead)
+                CubicKeyframe(active ? dx : 0, duration: rest)
+            }
             KeyframeTrack(\.y) {
-                CubicKeyframe(active ? -14 : 0, duration: 0.46)
-                CubicKeyframe(active ? -340 : 0, duration: 1.64)
+                CubicKeyframe(active ? dy * 0.06 - 16 : 0, duration: lead)
+                CubicKeyframe(active ? dy : 0, duration: rest)
             }
             KeyframeTrack(\.scale) {
-                CubicKeyframe(active ? 1.14 : 1, duration: 0.46)
-                CubicKeyframe(active ? 0.5 : 1, duration: 1.64)
+                CubicKeyframe(active ? 1.14 : 1, duration: lead)
+                CubicKeyframe(active ? end : 1, duration: rest)
             }
             KeyframeTrack(\.opacity) {
-                CubicKeyframe(1, duration: 0.46)
-                CubicKeyframe(active ? 0 : 1, duration: 1.64)
+                CubicKeyframe(1, duration: lead)
+                CubicKeyframe(active ? 0.9 : 1, duration: rest)
             }
         }
     }

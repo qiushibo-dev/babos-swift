@@ -70,6 +70,28 @@ struct ContentView: View {
             Button(store.t.cancel, role: .cancel) { store.pendingFinish = nil }
             Button(store.t.done) { store.confirmFinish() }
         }
+
+        // 一巡（20 件）が満了したとき。**書き出さなくても一巡は封をして残る**ので、
+        // ここで「あとで」を押しても記録は失われない
+        .alert(store.t.cycleFull(Cycle.size),
+               isPresented: .init(get: { store.pendingReport != nil },
+                                  set: { if !$0 { store.pendingReport = nil } })) {
+            Button(store.t.skipReport, role: .cancel) { store.pendingReport = nil }
+            Button(store.t.exportReport) {
+                let c = store.pendingReport
+                store.pendingReport = nil
+                // alert が閉じきってからパネルを出す。
+                // 同じ拍で出すと、どちらも前面を取れずに固まることがある
+                if let c { Task { @MainActor in store.exportReport(c) } }
+            }
+        }
+
+        // 書き出しの結果。保存先を出さないと、どこへ行ったのか分からない
+        .alert(store.reportResult ?? "",
+               isPresented: .init(get: { store.reportResult != nil },
+                                  set: { if !$0 { store.reportResult = nil } })) {
+            Button(store.t.close) { store.reportResult = nil }
+        }
     }
 
     private var main: some View {

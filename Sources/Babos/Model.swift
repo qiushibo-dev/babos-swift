@@ -60,6 +60,66 @@ enum Status: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - 一巡
+
+/// 完了した案件を 20 件ためて一区切り。溜まったらレポートを出せる。
+///
+/// **封をした一巡は捨てずに残す。** カウンタを 0 に戻すだけだと、
+/// その場で書き出さなかった瞬間に「どの 20 件だったか」が永久に分からなくなる。
+/// 「書き出さなくてもリセットでいい」は、書き出す機会が一度きりでいい
+/// という意味ではない。
+enum Cycle {
+    static let size = 20
+
+    /// ランプの寸法。HTML 版と同じ値。
+    static let dot: Double = 8
+    static let gap: Double = 10       // 横
+    static let vgap: Double = 6       // 段間
+
+    /// 気泡がランプへ飛ぶ時間。**BubbleField のキーフレームと必ず揃える。**
+    /// ずれると点が先に現れるか、気泡が消えたあとに間が空く。
+    static let flyDuration: Double = 1.4
+
+    /// 一段に何個並べるか。**20 か 10 の二択にする。**
+    /// 入るだけ詰める（15＋5 など）と段の長さが揃わず、
+    /// 窓を動かすたびに割り方が変わって数えにくい。
+    static func perRow(width: Double) -> Int {
+        let need = Double(size) * dot + Double(size - 1) * gap
+        return width >= need ? size : size / 2
+    }
+
+    /// 点が入る枠の大きさ。**空き枠は描かないが、枠自体は常にこの寸法。**
+    /// 飛び先の座標をここから測るので、0 個のときも縮めてはいけない。
+    static func innerSize(per: Int) -> CGSize {
+        let segs = Double(size / per)
+        return CGSize(width: Double(per) * dot + Double(per - 1) * gap,
+                      height: segs * dot + (segs - 1) * vgap)
+    }
+}
+
+/// 進行中の一巡。まだ封をしていない
+struct OpenCycle: Codable, Hashable {
+    var start: Date = .now
+    var caseIds: [String] = []
+
+    init() {}
+
+    /// 理由は Snapshot.init(from:) と同じ
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        start   = try c.decodeIfPresent(Date.self, forKey: .start) ?? .now
+        caseIds = try c.decodeIfPresent([String].self, forKey: .caseIds) ?? []
+    }
+}
+
+/// 封をした一巡。レポートの範囲になる
+struct SealedCycle: Codable, Hashable, Identifiable {
+    var id: String = UUID().uuidString
+    var start: Date
+    var end: Date
+    var caseIds: [String]
+}
+
 // MARK: - 氣泡的兩個編碼
 
 /// 這兩條公式是整個 app 的核心，直接沿用 HTML 版，數值不要動。

@@ -46,6 +46,12 @@ struct L: Sendable {
     var confirmFinish: @Sendable (String) -> String
     var confirmDelete: @Sendable (String) -> String
 
+    // 一巡とレポート
+    var reportTitle, reportRange, reportCases, reportNoLogs: String
+    var exportReport, skipReport, reportFailed: String
+    var cycleFull: @Sendable (Int) -> String
+    var reportSaved: @Sendable (String) -> String
+
     static func of(_ l: Lang) -> L {
         switch l {
         case .en: en
@@ -89,7 +95,13 @@ struct L: Sendable {
         linkType: "Type", linkPath: "Path or URL", phUrl: "https://…  or  file:///Users/…",
         addLinkTitle: "Add link",
         confirmFinish: { "Mark “\($0)” as done?" },
-        confirmDelete: { "Delete “\($0)”? This cannot be undone." })
+        confirmDelete: { "Delete “\($0)”? This cannot be undone." },
+        reportTitle: "Work report", reportRange: "Period", reportCases: "Cases",
+        reportNoLogs: "No entries.",
+        exportReport: "Export", skipReport: "Not now",
+        reportFailed: "Could not save the report.",
+        cycleFull: { "\($0) cases finished. Export a report for this round?" },
+        reportSaved: { "Report saved to:\n\($0)" })
 
     static let ja = L(
         searchPh: "案件を検索…", newCaseBtn: "＋ 新規案件",
@@ -126,7 +138,13 @@ struct L: Sendable {
         linkType: "種類", linkPath: "パス ／ URL", phUrl: "https://… または file:///Users/…",
         addLinkTitle: "リンクを追加",
         confirmFinish: { "「\($0)」を完了にしますか？" },
-        confirmDelete: { "「\($0)」を削除しますか？　元に戻せません。" })
+        confirmDelete: { "「\($0)」を削除しますか？　元に戻せません。" },
+        reportTitle: "作業レポート", reportRange: "期間", reportCases: "案件",
+        reportNoLogs: "ログなし。",
+        exportReport: "書き出す", skipReport: "あとで",
+        reportFailed: "レポートを保存できませんでした。",
+        cycleFull: { "\($0) 件が完了しました。この一巡のレポートを書き出しますか？" },
+        reportSaved: { "レポートを保存しました：\n\($0)" })
 
     static let zh = L(
         searchPh: "搜尋案件…", newCaseBtn: "＋ 新增案件",
@@ -163,5 +181,11 @@ struct L: Sendable {
         linkType: "類型", linkPath: "路徑或網址", phUrl: "https://… 或 file:///Users/…",
         addLinkTitle: "新增連結",
         confirmFinish: { "要把「\($0)」標記為完成嗎？" },
-        confirmDelete: { "要刪除「\($0)」嗎？　這個動作無法復原。" })
+        confirmDelete: { "要刪除「\($0)」嗎？　這個動作無法復原。" },
+        reportTitle: "工作報告", reportRange: "期間", reportCases: "案件",
+        reportNoLogs: "沒有紀錄。",
+        exportReport: "輸出", skipReport: "先不要",
+        reportFailed: "報告儲存失敗。",
+        cycleFull: { "已經完成 \($0) 件。要輸出這一輪的報告嗎？" },
+        reportSaved: { "報告已儲存至：\n\($0)" })
 }

@@ -212,6 +212,42 @@ final class Store {
     /// 完了アニメーション中。物理は位置を凍結し、画面のキーフレームに任せる
     var finishing: Set<String> = []
 
+    // MARK: 一巡
+
+    /// 進行中の一巡。ランプはこれを数えて点く
+    var cycle = OpenCycle()
+    /// 封をした一巡。**消さない**（理由は Cycle の説明）
+    var cycles: [SealedCycle] = []
+
+    /// 満了したら true
+    @discardableResult
+    private func cycleAdd(_ id: String) -> Bool {
+        guard !cycle.caseIds.contains(id) else { return false }
+        cycle.caseIds.append(id)
+        return cycle.caseIds.count >= Cycle.size
+    }
+
+    /// 完了を取り消したら消灯し、この一巡からも外す。
+    /// 残したままだと点の数と実際の完了数が合わなくなる。
+    private func cycleRemove(_ id: String) {
+        cycle.caseIds.removeAll { $0 == id }
+    }
+
+    /// **先に封をしてから訊く。** 順番を逆にすると、
+    /// ダイアログを閉じ損ねただけでその一巡が消える。
+    private func cycleComplete() {
+        let sealed = SealedCycle(start: cycle.start, end: .now, caseIds: cycle.caseIds)
+        cycles.append(sealed)
+        cycle = OpenCycle()
+        scheduleSave()
+        pendingReport = sealed
+    }
+
+    /// 満了して「レポートを書き出すか」を訊いている一巡
+    var pendingReport: SealedCycle?
+    /// 書き出したあとの一言（保存先／失敗）。nil で何も出さない
+    var reportResult: String?
+
     func setStep(_ id: String, _ n: Int) {
         guard let c = cases.first(where: { $0.id == id }) else { return }
         let next = (c.step == n) ? n - 1 : n
@@ -221,14 +257,16 @@ final class Store {
             pendingFinish = c
             return
         }
+        let was = c.done
         mutate(id) { c in
             c.step = max(0, next)
             c.done = false
         }
+        if was { cycleRemove(id) }
     }
 
-    /// 確認後：気泡を膨らませて上へ抜けさせ、抜け終わってから完了にする。
-    /// 2 秒は BubbleField のキーフレーム（2.1 秒）とほぼ同じ長さ。
+    /// 確認後：気泡をランプの位置まで飛ばし、着いてから完了にする。
+    /// 待ち時間は `Cycle.flyDuration` ＝ BubbleField のキーフレームと同じ長さ。
     func confirmFinish() {
         guard let target = pendingFinish else { return }
         pendingFinish = nil
@@ -236,11 +274,18 @@ final class Store {
         finishing.insert(target.id)
 
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(2))
+            try? await Task.sleep(for: .seconds(Cycle.flyDuration))
             if let i = cases.firstIndex(where: { $0.id == target.id }) {
                 cases[i].done = true
             }
             finishing.remove(target.id)
+
+            // **点が点くのは飛び終わってから。**
+            // 先に点けると、気泡がまだ空中にいるのに着地点が埋まっていて、
+            // 行き先が一つぶん左へずれる。
+            let full = cycleAdd(target.id)
+            scheduleSave()
+            if full { cycleComplete() }
         }
     }
 

@@ -11,12 +11,48 @@ struct Snapshot: Codable {
     var saverMinutes: Int = 5
     var sortKey: String = "updated"
     var sortAscending: Bool = false
+    /// 進行中の一巡と、封をした過去の一巡
+    var cycle: OpenCycle = .init()
+    var cycles: [SealedCycle] = []
+
+    init() {}
+
+    /// **手書きの理由：既定値は「鍵が無いとき」の受け皿にならない。**
+    ///
+    /// 合成された `init(from:)` は `var x = 1` の 1 を使ってくれない。
+    /// 鍵が無ければ `keyNotFound` を投げる。つまり項目を1つ足しただけで、
+    /// それ以前に書かれた data.json は**まるごと**読めなくなる。
+    ///
+    /// そして `load()` は失敗しても cases を空のまま先へ進むので、
+    /// 次の保存がその空を本物の上に書く。**症状は「全部消えた」。**
+    /// cycle / cycles を足したこの版が、まさにその1回目だった。
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        cases         = try c.decodeIfPresent([Case].self, forKey: .cases) ?? []
+        tags          = try c.decodeIfPresent(Tags.self, forKey: .tags) ?? .init()
+        lang          = try c.decodeIfPresent(String.self, forKey: .lang) ?? "ja"
+        theme         = try c.decodeIfPresent(String.self, forKey: .theme) ?? "ameba"
+        saverMinutes  = try c.decodeIfPresent(Int.self, forKey: .saverMinutes) ?? 5
+        sortKey       = try c.decodeIfPresent(String.self, forKey: .sortKey) ?? "updated"
+        sortAscending = try c.decodeIfPresent(Bool.self, forKey: .sortAscending) ?? false
+        cycle         = try c.decodeIfPresent(OpenCycle.self, forKey: .cycle) ?? .init()
+        cycles        = try c.decodeIfPresent([SealedCycle].self, forKey: .cycles) ?? []
+    }
 }
 
 /// 標籤登記簿。案件輸入時會自動補進來，也可以先登記好。
 struct Tags: Codable {
     var type: [String] = []
     var client: [String] = []
+
+    init() {}
+
+    /// 理由は Snapshot.init(from:) と同じ
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        type   = try c.decodeIfPresent([String].self, forKey: .type) ?? []
+        client = try c.decodeIfPresent([String].self, forKey: .client) ?? []
+    }
 }
 
 /// 儲存狀態。**一定要看得見。**
@@ -100,6 +136,12 @@ extension Store {
         saverMinutes = s.saverMinutes
         sortKey = SortKey(rawValue: s.sortKey) ?? .updated
         sortAscending = s.sortAscending
+        cycle = s.cycle
+        cycles = s.cycles
+
+        // 既存のデータには cycle が無い。**すでに done の案件を遡って点けない**——
+        // 一巡は「これから完了させる 20 件」の単位であって、過去の集計ではない。
+        // 遡って点けると、初回起動でいきなり満了ダイアログが出ることもある。
 
         // **色を実際に切り替えているのはこの全域フラグ。**
         // store.theme に入れただけでは何も変わらない。
@@ -108,10 +150,19 @@ extension Store {
     }
 
     private var snapshot: Snapshot {
-        Snapshot(cases: cases, tags: tags,
-                 lang: lang.rawValue, theme: theme.rawValue,
-                 saverMinutes: saverMinutes,
-                 sortKey: sortKey.rawValue, sortAscending: sortAscending)
+        // init(from:) を手書きした時点で memberwise init は消えるので、
+        // ここは1項目ずつ埋める。**足したら必ずここも足すこと。**
+        var s = Snapshot()
+        s.cases = cases
+        s.tags = tags
+        s.lang = lang.rawValue
+        s.theme = theme.rawValue
+        s.saverMinutes = saverMinutes
+        s.sortKey = sortKey.rawValue
+        s.sortAscending = sortAscending
+        s.cycle = cycle
+        s.cycles = cycles
+        return s
     }
 
     // MARK: 寫
