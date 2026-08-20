@@ -32,7 +32,7 @@ struct L: Sendable {
     var all, active, idle, near, done: String
     var noBubbles, noCasesYet, noRows: String
     var notes, fullLog, phMemo: String
-    var save, saved, close, cancel, add: String
+    var save, saved, close, cancel, add, confirmOk: String
     var screensaver, ssOff, minUnit, saverCases: String
     var settings, language, theme, themeAmeba, themeMono: String
     var tagManagement, about, tagHint, tagAdd, phTag, noTags: String
@@ -81,7 +81,7 @@ struct L: Sendable {
         noRows: "No cases match this filter.",
         notes: "Notes", fullLog: "Work log (read only)",
         phMemo: "Anything worth keeping about this case — direction, decisions, things to watch.",
-        save: "Save", saved: "Saved", close: "Close", cancel: "Cancel", add: "Add",
+        save: "Save", saved: "Saved", close: "Close", cancel: "Cancel", add: "Add", confirmOk: "OK",
         screensaver: "Screen saver", ssOff: "Off", minUnit: " min", saverCases: " active cases",
         settings: "Settings", language: "Language",
         theme: "Colour", themeAmeba: "Midnight", themeMono: "Greyscale",
@@ -124,7 +124,7 @@ struct L: Sendable {
         noRows: "該当する案件がありません。",
         notes: "メモ", fullLog: "作業ログ（表示のみ）",
         phMemo: "この案件について残しておきたいこと——方向性、決定事項、注意点など。",
-        save: "保存", saved: "保存しました", close: "閉じる", cancel: "キャンセル", add: "追加",
+        save: "保存", saved: "保存しました", close: "閉じる", cancel: "キャンセル", add: "追加", confirmOk: "OK",
         screensaver: "スクリーンセーバー", ssOff: "オフ", minUnit: "分", saverCases: " 件 進行中",
         settings: "設定", language: "言語",
         theme: "配色", themeAmeba: "ミッドナイト", themeMono: "グレースケール",
@@ -167,7 +167,7 @@ struct L: Sendable {
         noRows: "沒有符合這個篩選的案件。",
         notes: "備註", fullLog: "工作紀錄（唯讀）",
         phMemo: "關於這個案件值得記下來的事——方向、決定、要注意的地方。",
-        save: "儲存", saved: "已儲存", close: "關閉", cancel: "取消", add: "新增",
+        save: "儲存", saved: "已儲存", close: "關閉", cancel: "取消", add: "新增", confirmOk: "確定",
         screensaver: "螢幕保護", ssOff: "關閉", minUnit: " 分鐘", saverCases: " 件進行中",
         settings: "設定", language: "語言",
         theme: "配色", themeAmeba: "午夜藍", themeMono: "灰階",

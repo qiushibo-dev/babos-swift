@@ -54,19 +54,25 @@ extension Store {
     /// 保存先を訊いてから書く。
     /// **`begin` ではなく `runModal` を使う。** 非同期版だと呼び出し元の
     /// alert が閉じきる前にパネルが出て、どちらも操作できなくなることがある。
-    func exportReport(_ cycle: SealedCycle) {
+    /// 書き出せたら true。**呼び出し側はこれを見てから案件を消すこと。**
+    /// パネルを閉じただけ・書き込みに失敗した場合は false を返すので、
+    /// 記録が残らないまま案件だけ消えることはない。
+    @discardableResult
+    func exportReport(_ cycle: SealedCycle) -> Bool {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "babos-report-\(fmtDay(cycle.end)).md"
         panel.allowedContentTypes = [.init(filenameExtension: "md")].compactMap { $0 }
         panel.canCreateDirectories = true
 
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard panel.runModal() == .OK, let url = panel.url else { return false }
         do {
             try buildReport(cycle).write(to: url, atomically: true, encoding: .utf8)
             // 保存先を出さないと、どこへ行ったのか分からない
-            reportResult = t.reportSaved(url.path)
+            notify(t.reportSaved(url.path))
+            return true
         } catch {
-            reportResult = t.reportFailed
+            notify(t.reportFailed)
+            return false
         }
     }
 }

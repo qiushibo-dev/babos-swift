@@ -43,54 +43,45 @@ struct ContentView: View {
         .sheet(isPresented: $settingsOpen) { SettingsSheet(store: store) }
         .sheet(item: $store.detailModal) { c in CaseDetailSheet(store: store, caseID: c.id) }
         .sheet(item: $store.addLinkSheet) { c in AddLinkSheet(store: store, caseID: c.id) }
-        // 削除は唯一の不可逆操作。必ず一度訊く
-
-        .alert(store.pendingDelete.map { store.t.confirmDelete($0.name) } ?? "",
-
-               isPresented: .init(get: { store.pendingDelete != nil },
-
-                                  set: { if !$0 { store.pendingDelete = nil } })) {
-
-            Button(store.t.cancel, role: .cancel) { store.pendingDelete = nil }
-
-            Button(store.t.deleteCase, role: .destructive) {
-
-                if let c = store.pendingDelete { store.delete(c.id) }
-
-                store.pendingDelete = nil
-
+        // 確認・通知はすべて自前のダイアログで出す（OS の .alert は使わない）。
+        // 理由は AskDialog.swift の頭に書いた
+        .overlay {
+            if let req = store.ask {
+                AskDialog(request: req, t: store.t) { store.ask = nil }
             }
+        }
+        .animation(.easeOut(duration: 0.12), value: store.ask?.id)
 
+        // 削除は唯一の不可逆操作。必ず一度訊く
+        .onChange(of: store.pendingDelete?.id) { _, _ in
+            guard let c = store.pendingDelete else { return }
+            store.pendingDelete = nil
+            store.confirm(store.t.confirmDelete(c.name), ok: store.t.deleteCase) {
+                store.delete(c.id)
+            }
         }
 
         // 10 に到達しても即完了にはしない。必ず一度訊く
-        .alert(store.pendingFinish.map { store.t.confirmFinish($0.name) } ?? "",
-               isPresented: .init(get: { store.pendingFinish != nil },
-                                  set: { if !$0 { store.pendingFinish = nil } })) {
-            Button(store.t.cancel, role: .cancel) { store.pendingFinish = nil }
-            Button(store.t.done) { store.confirmFinish() }
+        .onChange(of: store.pendingFinish?.id) { _, _ in
+            guard let c = store.pendingFinish else { return }
+            store.confirm(store.t.confirmFinish(c.name), ok: store.t.done) {
+                store.confirmFinish()
+            } 
+            store.pendingFinish = nil
         }
 
-        // 一巡（20 件）が満了したとき。**書き出さなくても一巡は封をして残る**ので、
-        // ここで「あとで」を押しても記録は失われない
-        .alert(store.t.cycleFull(Cycle.size),
-               isPresented: .init(get: { store.pendingReport != nil },
-                                  set: { if !$0 { store.pendingReport = nil } })) {
-            Button(store.t.skipReport, role: .cancel) { store.pendingReport = nil }
-            Button(store.t.exportReport) {
-                let c = store.pendingReport
-                store.pendingReport = nil
-                // alert が閉じきってからパネルを出す。
+        // 一巡（20 件）が満了したとき。**書き出しに成功した時だけ、その 20 件を消す。**
+        // 「あとで」を押した場合は案件も一巡の記録も残る
+        .onChange(of: store.pendingReport?.id) { _, _ in
+            guard let c = store.pendingReport else { return }
+            store.pendingReport = nil
+            store.confirm(store.t.cycleFull(Cycle.size), ok: store.t.exportReport) {
+                // ダイアログが閉じきってからパネルを出す。
                 // 同じ拍で出すと、どちらも前面を取れずに固まることがある
-                if let c { Task { @MainActor in store.exportReport(c) } }
+                Task { @MainActor in
+                    if store.exportReport(c) { store.purgeCycleCases(c) }
+                }
             }
-        }
-
-        // 書き出しの結果。保存先を出さないと、どこへ行ったのか分からない
-        .alert(store.reportResult ?? "",
-               isPresented: .init(get: { store.reportResult != nil },
-                                  set: { if !$0 { store.reportResult = nil } })) {
-            Button(store.t.close) { store.reportResult = nil }
         }
     }
 

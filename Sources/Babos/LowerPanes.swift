@@ -112,6 +112,18 @@ struct CaseList: View {
                     }
                     ForEach(store.listCases) { c in
                         row(c)
+                            // 完了した案件は泡に出ないので、右パネルからは開けない。
+                            // 一覧で右クリックして消せるようにする。**確認は必ず出す。**
+                            .contextMenu {
+                                if c.done {
+                                    Button(store.t.deleteCase) {
+                                        store.confirm(store.t.confirmDelete(c.name),
+                                                      ok: store.t.deleteCase) {
+                                            store.delete(c.id)
+                                        }
+                                    }
+                                }
+                            }
                         Divider().overlay(Color.hairline)
                     }
                 }

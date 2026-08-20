@@ -243,10 +243,21 @@ final class Store {
         pendingReport = sealed
     }
 
+    /// 自前の確認ダイアログに出す一件。nil で閉じている
+    var ask: AskRequest?
+
+    /// 確認を出す入口。**OS の .alert は使わない**（見た目が浮くため）
+    func confirm(_ message: String, ok: String? = nil, _ action: @escaping () -> Void) {
+        ask = AskRequest(message: message, okLabel: ok, onConfirm: action)
+    }
+
+    /// 通知。ボタンは一つだけ
+    func notify(_ message: String) {
+        ask = AskRequest(message: message, alert: true)
+    }
+
     /// 満了して「レポートを書き出すか」を訊いている一巡
     var pendingReport: SealedCycle?
-    /// 書き出したあとの一言（保存先／失敗）。nil で何も出さない
-    var reportResult: String?
 
     func setStep(_ id: String, _ n: Int) {
         guard let c = cases.first(where: { $0.id == id }) else { return }
@@ -323,6 +334,18 @@ final class Store {
 
     func setMemo(_ id: String, _ text: String) {
         mutate(id) { $0.memo = text }
+    }
+
+    /// 一巡ぶんの案件をまとめて消す。**レポートが実際に書けた時だけ呼ぶ。**
+    /// 封じた cycles には id だけが残るが、buildReport は見つからない案件を
+    /// 飛ばすので、後から読み返しても壊れない。
+    func purgeCycleCases(_ cycle: SealedCycle) {
+        let ids = Set(cycle.caseIds)
+        cases.removeAll { ids.contains($0.id) }
+        if let sel = selectedID, ids.contains(sel) { selectedID = nil }
+        if let lt = lastTouched, ids.contains(lt) { lastTouched = nil }
+        if let f = flashID, ids.contains(f) { flashID = nil }
+        scheduleSave()
     }
 
     func delete(_ id: String) {
