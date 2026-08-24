@@ -1,0 +1,19 @@
+I built a work tracker called Babos.
+
+The problem was simple. I could never remember where I had left off on a project. I tried plenty of to do lists and they all died the same way, looking good for two weeks and then never opened again.
+
+So this one does one thing. One project, one bubble.
+
+The size is not how much work I have done. It is how much of my head the project is taking up right now. Small at the start, largest in the middle, small again near the end. The middle is where design actually hurts. What is left at the end is mostly mechanical.
+
+Opacity carries the progress instead. It only gets darker.
+
+Keeping those two separate turned out to matter. In every other tool I have used, "just started" and "almost finished" look the same, because both of them read as "not done yet". Here they do not.
+
+There are no progress rings on the bubbles. No category colours. No percentage labels. The whole app has exactly one animation: when a project is finished, the bubble swells once and floats away.
+
+Data sits in a file on your own machine. No account, no login, works offline.
+
+Free, for macOS.
+
+https://github.com/qiushibo-dev/babos-swift
