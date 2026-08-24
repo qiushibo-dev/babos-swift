@@ -64,10 +64,12 @@ struct ContentView: View {
         // 10 に到達しても即完了にはしない。必ず一度訊く
         .onChange(of: store.pendingFinish?.id) { _, _ in
             guard let c = store.pendingFinish else { return }
-            store.confirm(store.t.confirmFinish(c.name), ok: store.t.done) {
-                store.confirmFinish()
-            } 
+            // **先に nil へ戻してから訊く。** 順番も、対象を渡すことも、
+            // 上の削除・下のレポートと必ず揃える
             store.pendingFinish = nil
+            store.confirm(store.t.confirmFinish(c.name), ok: store.t.done) {
+                store.confirmFinish(c)
+            }
         }
 
         // 一巡（20 件）が満了したとき。**書き出しに成功した時だけ、その 20 件を消す。**

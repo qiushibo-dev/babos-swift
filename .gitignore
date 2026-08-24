@@ -1,5 +1,9 @@
 .DS_Store
-.build/
+# 「.build 2」のような iCloud の衝突コピーもまとめて弾く
+.build*
 *.xcodeproj
+*.bak
+*.bak-*
 
 # 建置產物在 ~/.cache/babos-swift-build（刻意放在 iCloud 管理範圍外，理由見 build.sh）
+.vscode/

@@ -278,9 +278,12 @@ final class Store {
 
     /// 確認後：気泡をランプの位置まで飛ばし、着いてから完了にする。
     /// 待ち時間は `Cycle.flyDuration` ＝ BubbleField のキーフレームと同じ長さ。
-    func confirmFinish() {
-        guard let target = pendingFinish else { return }
-        pendingFinish = nil
+    ///
+    /// **対象は引数で受け取ること。`pendingFinish` を読みに行ってはいけない。**
+    /// ダイアログを出した側は、二度目の 10 でも `onChange` が発火するように
+    /// その場で `pendingFinish` を nil に戻す。中で読むと必ず nil で、
+    /// 「はい」を押しても何も起きなくなる（削除・レポートと同じ書き方に揃える）。
+    func confirmFinish(_ target: Case) {
         mutate(target.id) { $0.step = 10 }
         finishing.insert(target.id)
 
