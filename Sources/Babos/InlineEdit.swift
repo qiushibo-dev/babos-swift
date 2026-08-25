@@ -20,8 +20,16 @@ struct InlineText: View {
 
     private var matches: [String] {
         let q = draft.trimmingCharacters(in: .whitespaces).lowercased()
-        return suggestions.filter {
+        let hit = suggestions.filter {
             $0.lowercased().contains(q) && $0.lowercased() != q
+        }
+        // **前方一致を先に出す。** 一文字だけ打った時、頭で合うものが
+        // 「含むだけ」のものより下に埋もれると、候補が出ていても見つけられない。
+        // 例：L で LinkedIn より Personal（末尾の l）が先に来ていた。
+        return hit.sorted { a, b in
+            let pa = a.lowercased().hasPrefix(q), pb = b.lowercased().hasPrefix(q)
+            if pa != pb { return pa }
+            return a < b
         }
     }
 

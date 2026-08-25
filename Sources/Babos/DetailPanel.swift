@@ -311,7 +311,14 @@ struct NewCaseForm: View {
     @State private var name = ""
     @State private var type = ""
     @State private var client = ""
-    @FocusState private var nameFocused: Bool
+
+    /// どの欄に入っているか。候補はフォーカスのある欄にだけ出す。
+    /// 三つ同時に開くと下の欄が隠れて、何を入力しているのか見えなくなる。
+    private enum Field { case name, type, client }
+    @FocusState private var focus: Field?
+
+    /// 候補の選択位置。同時に開くのは一欄だけなので、状態も一つで足りる
+    @State private var highlighted = -1
 
     private var canGoBack: Bool { !store.cases.isEmpty }
 
@@ -322,9 +329,9 @@ struct NewCaseForm: View {
                     Text(store.t.newCase)
                         .font(Typo.body(26, .light))
                         .foregroundStyle(Color.ink)
-                    Text(canGoBack
-                         ? "作成すると、この案件が左側に気泡として現れます。"
-                         : "まずは1件目を登録してください。")
+                    // **べた書きしないこと。** 三言語ぶん Strings.swift に用意してある。
+                    // ここだけ日本語が固定で残っていて、中国語表示でも和文が出ていた
+                    Text(canGoBack ? store.t.newCaseHint : store.t.newCaseHintFirst)
                         .metaStyle()
                 }
 
@@ -345,9 +352,12 @@ struct NewCaseForm: View {
             }
             .padding(.bottom, 26)
 
-            field(store.t.fieldName, store.t.phName, $name).focused($nameFocused)
-            field(store.t.fieldType, store.t.phType, $type)
-            field(store.t.fieldClient, store.t.phClient, $client)
+            // 種別と客先は登記簿から候補を出す。詳細パネルの InlineText と同じ pool
+            field(store.t.fieldName, store.t.phName, $name, .name)
+            field(store.t.fieldType, store.t.phType, $type, .type,
+                  suggestions: store.pool(\.type))
+            field(store.t.fieldClient, store.t.phClient, $client, .client,
+                  suggestions: store.pool(\.client))
 
             // 「Enter で作成」の一文は置かない。
             // 同じことをボタンが言っているうえ、Enter で送れるのは慣習として
@@ -369,30 +379,95 @@ struct NewCaseForm: View {
             Spacer(minLength: 0)
         }
         .padding(24)
-        .onAppear { nameFocused = true }
+        .onAppear { focus = .name }
+        // 欄を移ったら選択位置は捨てる。持ち越すと次の欄で違う項目が光る
+        .onChange(of: focus) { _, _ in highlighted = -1 }
     }
 
-    private func field(_ label: String, _ ph: String, _ text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
+    /// 候補＝入力中の文字を含むもの。完全一致は出さない（選んでも何も変わらないので）
+    private func matches(_ text: String, _ pool: [String]) -> [String] {
+        let q = text.trimmingCharacters(in: .whitespaces).lowercased()
+        let hit = pool.filter { $0.lowercased().contains(q) && $0.lowercased() != q }
+        // **前方一致を先に出す。** 一文字だけ打った時、頭で合うものが
+        // 「含むだけ」のものより下に埋もれると、候補が出ていても見つけられない。
+        // 例：L で LinkedIn より Personal（末尾の l）が先に来ていた。
+        return hit.sorted { a, b in
+            let pa = a.lowercased().hasPrefix(q), pb = b.lowercased().hasPrefix(q)
+            if pa != pb { return pa }
+            return a < b
+        }
+    }
+
+    private func field(_ label: String, _ ph: String, _ text: Binding<String>,
+                       _ which: Field, suggestions: [String] = []) -> some View {
+        let hits = focus == which
+            ? Array(matches(text.wrappedValue, suggestions).prefix(6))
+            : []
+
+        return VStack(alignment: .leading, spacing: 7) {
             Text(label).metaStyle(10)
             TextField(ph, text: text)
                 .textFieldStyle(.plain)
                 .font(Typo.body(13))
                 .foregroundStyle(Color.ink)
+                .focused($focus, equals: which)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .background(Capsule().strokeBorder(Color.slateBody, lineWidth: 1))
-                .onSubmit(submit)
+                .onSubmit {
+                    // 候補を選んでいる最中の Enter は「その候補で決定」。
+                    // ここで submit まで走らせると、確かめる間もなく案件ができる
+                    if highlighted >= 0 { highlighted = -1 } else { submit() }
+                }
+                .onKeyPress(.downArrow) { move(1, hits, text) }
+                .onKeyPress(.upArrow)   { move(-1, hits, text) }
+                // **入力欄に掛けること。** VStack に掛けるとラベルぶん上にずれる
+                .overlay(alignment: .topLeading) { popup(hits, text) }
         }
         .padding(.bottom, 18)
+        // 開いている欄を最前面に。でないと下の欄の枠が候補の上に描かれる
+        .zIndex(focus == which ? 10 : 0)
+    }
+
+    @ViewBuilder
+    private func popup(_ hits: [String], _ text: Binding<String>) -> some View {
+        if !hits.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(hits.enumerated()), id: \.offset) { i, s in
+                    Text(s)
+                        .font(Typo.body(12))
+                        .foregroundStyle(i == highlighted ? Color.onAccent : Color.mist)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(i == highlighted ? Color.signalBlue : .clear)
+                        .contentShape(Rectangle())
+                        .onTapGesture { text.wrappedValue = s; highlighted = -1 }
+                }
+            }
+            .frame(width: 220)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.midnightInk))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.slateBody, lineWidth: 1))
+            .shadow(color: .black.opacity(0.4), radius: 12, y: 4)
+            .offset(y: 44)
+            .zIndex(10)
+        }
+    }
+
+    private func move(_ d: Int, _ hits: [String], _ text: Binding<String>) -> KeyPress.Result {
+        guard !hits.isEmpty else { return .ignored }
+        highlighted = max(-1, min(hits.count - 1, highlighted + d))
+        if highlighted >= 0 { text.wrappedValue = hits[highlighted] }
+        return .handled
     }
 
     private func submit() {
         guard !name.trimmingCharacters(in: .whitespaces).isEmpty else {
-            nameFocused = true
+            focus = .name
             return
         }
         store.create(name: name, type: type, client: client)
         name = ""; type = ""; client = ""
+        highlighted = -1
     }
 }
